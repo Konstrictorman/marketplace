@@ -1,0 +1,23 @@
+$kind: http-request
+url: "{{server}}/api/products"
+method: POST
+body:
+  type: json
+  content: "{\r
+
+    \  \"sellerId\": \"8ff50906-7d8b-41d7-ad51-198f912a4e46\",\r
+
+    \  \"categoryId\": \"ab6d83c3-bbb8-4303-9644-2b0dea1bb8bb\",\r
+
+    \  \"title\": \"Vintage desk lamp\",\r
+
+    \  \"description\": \"Nice metal desk lamp, works well, minor wear.\",\r
+
+    \  \"price\": \"45.99\",\r
+
+    \  \"condition\": \"used\",\r
+
+    \  \"inventory\": 1\r
+
+    }"
+order: 1000

@@ -9,7 +9,7 @@ export function createApp(): express.Express {
 
   app.use(express.json());
   app.use(cors(getCorsOptions()));
-  app.use(rootRouter);
+  app.use("/api", rootRouter);
   app.use(notFoundHandler);
   app.use(errorHandler);
 

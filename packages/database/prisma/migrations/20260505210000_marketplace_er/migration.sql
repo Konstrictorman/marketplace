@@ -1,11 +1,11 @@
-﻿-- CreateSchema
+-- CreateSchema
 CREATE SCHEMA IF NOT EXISTS "public";
 
 -- CreateEnum
 CREATE TYPE "product_condition" AS ENUM ('NEW', 'USED');
 
 -- CreateEnum
-CREATE TYPE "product_status" AS ENUM ('DRAFT', 'ACTIVE', 'SOLD', 'ARCHIVED');
+CREATE TYPE "product_status" AS ENUM ('ACTIVE', 'INACTIVE');
 
 -- CreateEnum
 CREATE TYPE "order_status" AS ENUM ('PENDING', 'CONFIRMED', 'DELIVERED', 'CANCELLED');
@@ -77,7 +77,7 @@ CREATE TABLE "products" (
     "price" DECIMAL(12,2) NOT NULL,
     "condition" "product_condition" NOT NULL,
     "inventory" INTEGER NOT NULL DEFAULT 0,
-    "status" "product_status" NOT NULL DEFAULT 'DRAFT',
+    "status" "product_status" NOT NULL DEFAULT 'ACTIVE',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
 

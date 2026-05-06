@@ -86,7 +86,39 @@ export const errorHandler: ErrorRequestHandler = (
     return;
   }
 
-  if (process.env.NODE_ENV === "development" && err instanceof Error) {
+  /** Prisma `PrismaClientKnownRequestError` (and similar) expose a `code` like `P2002`. */
+  if (
+    typeof err === "object" &&
+    err !== null &&
+    "code" in err &&
+    typeof (err as { code: unknown }).code === "string"
+  ) {
+    const prismaCode = (err as { code: string }).code;
+    if (prismaCode.startsWith("P")) {
+      const exposeDetails = process.env.NODE_ENV !== "production";
+      const prismaMessage =
+        exposeDetails && err instanceof Error
+          ? err.message
+          : "An unexpected error occurred";
+
+      body.error.code = prismaCode;
+      body.error.message = prismaMessage;
+      if (
+        prismaCode === "P2003" ||
+        prismaCode === "P2015" ||
+        prismaCode === "P2025"
+      ) {
+        res.status(400).json(body);
+        return;
+      }
+
+      console.error(err);
+      res.status(500).json(body);
+      return;
+    }
+  }
+
+  if (process.env.NODE_ENV !== "production" && err instanceof Error) {
     body.error.message = err.message;
     body.error.code = "internal_error";
     console.error(err);
