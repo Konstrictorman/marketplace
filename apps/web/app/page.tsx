@@ -1,4 +1,4 @@
-"use client"
+"use client";
 import ProductCard from "@/components/ProductCard";
 import Image from "next/image";
 
@@ -19,12 +19,10 @@ export default function Home() {
           </h1>
           <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
             Work in progress...
-           
           </p>
         </div>
-
-          <ProductCard/>
-        </main>
+        <ProductCard />
+      </main>
     </div>
   );
 }
