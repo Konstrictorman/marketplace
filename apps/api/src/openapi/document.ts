@@ -28,6 +28,11 @@ export const openApiDocument = {
       description:
         "Gallery URLs per product (`sellerId` in body enforced until auth is wired)",
     },
+    {
+      name: "Conversations",
+      description:
+        "Buyer/seller threads for a product (`userId`/`buyerId` in query/body until auth is wired)",
+    },
   ],
   paths: {
     "/health": {
@@ -582,6 +587,457 @@ export const openApiDocument = {
         },
       },
     },
+    "/conversations": {
+      get: {
+        operationId: "listConversations",
+        tags: ["Conversations"],
+        summary: "List conversations for user",
+        parameters: [
+          {
+            name: "userId",
+            in: "query",
+            required: false,
+            schema: { type: "string", format: "uuid" },
+          },
+          {
+            name: "page",
+            in: "query",
+            schema: { type: "integer", minimum: 1, default: 1 },
+          },
+          {
+            name: "pageSize",
+            in: "query",
+            schema: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+          },
+          {
+            name: "productId",
+            in: "query",
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Paged list for the participant user",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ConversationListResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        operationId: "createConversation",
+        tags: ["Conversations"],
+        summary: "Create conversation",
+        description:
+          "Creates buyer/seller conversation for a product. If one already exists for that product + pair, returns it.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ConversationCreateBody" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Created",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ConversationResponse" },
+              },
+            },
+          },
+          "200": {
+            description: "Existing conversation returned (idempotent create)",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ConversationResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Product or buyer not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "Invalid participants (buyer equals seller)",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/conversations/{id}": {
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "getConversation",
+        tags: ["Conversations"],
+        summary: "Get conversation by id",
+        parameters: [
+          {
+            name: "userId",
+            in: "query",
+            required: false,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Conversation detail for participant",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ConversationResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "Not a participant",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Conversation not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        operationId: "deleteConversation",
+        tags: ["Conversations"],
+        summary: "Delete conversation",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ConversationDeleteBody" },
+            },
+          },
+        },
+        responses: {
+          "204": {
+            description: "No body",
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "Not a participant",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Conversation not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/conversations/{conversationId}/participants": {
+      parameters: [
+        {
+          name: "conversationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "listConversationParticipants",
+        tags: ["Conversations"],
+        summary: "List participants in conversation",
+        parameters: [
+          {
+            name: "userId",
+            in: "query",
+            required: false,
+            description:
+              "Optional caller identity for participant-only access until auth is wired. Omitted returns participants when the conversation exists.",
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Conversation participants",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ConversationParticipantListResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "Not a participant",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Conversation not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        operationId: "addConversationParticipant",
+        tags: ["Conversations"],
+        summary: "Add participant to conversation",
+        description:
+          "Actor must already be a conversation participant. `actorUserId` represents the caller identity while JWT/session auth is not wired. Returns existing participant when already present.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/ConversationParticipantCreateBody",
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Participant added",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ConversationParticipantResponse",
+                },
+              },
+            },
+          },
+          "200": {
+            description: "Existing participant returned (idempotent add)",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ConversationParticipantResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "Not a participant",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Conversation or user not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/conversations/{conversationId}/participants/{participantId}": {
+      parameters: [
+        {
+          name: "conversationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+        {
+          name: "participantId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "getConversationParticipant",
+        tags: ["Conversations"],
+        summary: "Get one conversation participant",
+        parameters: [
+          {
+            name: "userId",
+            in: "query",
+            required: false,
+            description:
+              "Optional caller identity for participant-only access until auth is wired. Omitted returns the participant row if it exists for this conversation.",
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Participant detail",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ConversationParticipantResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "Not a participant",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Conversation or participant not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        operationId: "deleteConversationParticipant",
+        tags: ["Conversations"],
+        summary: "Delete conversation participant",
+        description:
+          "`actorUserId` represents the caller identity while JWT/session auth is not wired.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/ConversationParticipantDeleteBody",
+              },
+            },
+          },
+        },
+        responses: {
+          "204": {
+            description: "No body",
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "Not a participant",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Conversation or participant not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "Minimum participants required",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
   },
   components: {
     schemas: {
@@ -598,7 +1054,7 @@ export const openApiDocument = {
               code: {
                 type: "string",
                 description:
-                  "Examples: `validation_failed` (Zod/query/body/param checks), `seller_not_found`, `category_not_found`, `product_not_found`, `image_not_found`, `forbidden` (seller mismatch), `product_removed` (mutation on removed catalog row), `database_unreachable` (`GET /health/db`). Others may appear as the API grows.",
+                  "Examples: `validation_failed` (Zod/query/body/param checks), `seller_not_found`, `buyer_not_found`, `user_not_found`, `category_not_found`, `product_not_found`, `conversation_not_found`, `participant_not_found`, `image_not_found`, `forbidden` (ownership/participant mismatch), `invalid_participants` (buyer equals seller), `min_participants_required` (cannot leave fewer than 2 participants), `product_removed` (mutation on removed catalog row), `database_unreachable` (`GET /health/db`). Others may appear as the API grows.",
                 example: "validation_failed",
               },
               message: {
@@ -826,6 +1282,104 @@ export const openApiDocument = {
           },
           sortOrder: { type: "integer", minimum: 0 },
           isMain: { type: "boolean" },
+        },
+      },
+      ConversationParticipantRef: {
+        type: "object",
+        required: ["userId"],
+        properties: {
+          userId: { type: "string", format: "uuid" },
+        },
+      },
+      Conversation: {
+        type: "object",
+        required: ["id", "productId", "createdAt", "participants"],
+        properties: {
+          id: { type: "string", format: "uuid" },
+          productId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          participants: {
+            type: "array",
+            items: { $ref: "#/components/schemas/ConversationParticipantRef" },
+          },
+        },
+      },
+      ConversationResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: { $ref: "#/components/schemas/Conversation" },
+        },
+      },
+      ConversationListResponse: {
+        type: "object",
+        required: ["data", "meta"],
+        properties: {
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Conversation" },
+          },
+          meta: { $ref: "#/components/schemas/PaginationMeta" },
+        },
+      },
+      ConversationCreateBody: {
+        type: "object",
+        required: ["productId", "buyerId"],
+        properties: {
+          productId: { type: "string", format: "uuid" },
+          buyerId: { type: "string", format: "uuid" },
+        },
+      },
+      ConversationDeleteBody: {
+        type: "object",
+        required: ["userId"],
+        properties: {
+          userId: { type: "string", format: "uuid" },
+        },
+      },
+      ConversationParticipant: {
+        type: "object",
+        required: ["conversationId", "userId", "createdAt"],
+        properties: {
+          conversationId: { type: "string", format: "uuid" },
+          userId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      ConversationParticipantResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: { $ref: "#/components/schemas/ConversationParticipant" },
+        },
+      },
+      ConversationParticipantListResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/ConversationParticipant" },
+          },
+        },
+      },
+      ConversationParticipantCreateBody: {
+        type: "object",
+        required: ["actorUserId", "userId"],
+        description:
+          "`actorUserId` is the requester identity used for authorization until JWT/session auth is wired. `userId` is the participant to add.",
+        properties: {
+          actorUserId: { type: "string", format: "uuid" },
+          userId: { type: "string", format: "uuid" },
+        },
+      },
+      ConversationParticipantDeleteBody: {
+        type: "object",
+        required: ["actorUserId"],
+        description:
+          "`actorUserId` is the requester identity used for authorization until JWT/session auth is wired.",
+        properties: {
+          actorUserId: { type: "string", format: "uuid" },
         },
       },
     },
