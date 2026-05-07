@@ -22,9 +22,8 @@ export default function Home() {
            
           </p>
         </div>
-        <div>
+
           <ProductCard/>
-        </div>
         </main>
     </div>
   );
