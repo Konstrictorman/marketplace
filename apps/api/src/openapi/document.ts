@@ -8,7 +8,7 @@ export const openApiDocument = {
     title: "Marketplace API",
     version: "1.0.0",
     description:
-      "Express REST API (`apps/api`). All JSON errors use `{ error: { code, message, details? } }`.",
+      "Express REST API (`apps/api`). JSON errors share the `ApiErrorEnvelope` schema (`error.code` / `error.message` / optional `error.details`). Use **operationId** for generated clients.",
   },
   servers: [
     {
@@ -19,11 +19,20 @@ export const openApiDocument = {
   ],
   tags: [
     { name: "Health", description: "Liveness & database connectivity" },
-    { name: "Products", description: "Product catalog CRUD & search" },
+    {
+      name: "Products",
+      description: "Product catalog CRUD & search",
+    },
+    {
+      name: "Product images",
+      description:
+        "Gallery URLs per product (`sellerId` in body enforced until auth is wired)",
+    },
   ],
   paths: {
     "/health": {
       get: {
+        operationId: "getHealthPing",
         tags: ["Health"],
         summary: "Plain-text health ping",
         responses: {
@@ -40,6 +49,7 @@ export const openApiDocument = {
     },
     "/health/db": {
       get: {
+        operationId: "getHealthDb",
         tags: ["Health"],
         summary: "PostgreSQL readiness",
         responses: {
@@ -68,6 +78,7 @@ export const openApiDocument = {
     },
     "/products": {
       get: {
+        operationId: "listProducts",
         tags: ["Products"],
         summary: "List products",
         parameters: [
@@ -154,6 +165,7 @@ export const openApiDocument = {
         },
       },
       post: {
+        operationId: "createProduct",
         tags: ["Products"],
         summary: "Create product",
         requestBody: {
@@ -202,6 +214,7 @@ export const openApiDocument = {
         },
       ],
       get: {
+        operationId: "getProduct",
         tags: ["Products"],
         summary: "Get product by id",
         responses: {
@@ -232,6 +245,7 @@ export const openApiDocument = {
         },
       },
       patch: {
+        operationId: "updateProduct",
         tags: ["Products"],
         summary: "Update product",
         description:
@@ -280,6 +294,7 @@ export const openApiDocument = {
         },
       },
       delete: {
+        operationId: "softDeleteProduct",
         tags: ["Products"],
         summary: "Soft delete product",
         description:
@@ -323,20 +338,277 @@ export const openApiDocument = {
         },
       },
     },
+    "/products/{productId}/images": {
+      parameters: [
+        {
+          name: "productId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "listProductImages",
+        tags: ["Product images"],
+        summary: "List product images",
+        description:
+          "Returns images ordered by `sortOrder`, then `createdAt`, then `id`.",
+        responses: {
+          "200": {
+            description: "Gallery list",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ProductImageListResponse",
+                },
+              },
+            },
+          },
+          "404": {
+            description: "Product not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        operationId: "createProductImage",
+        tags: ["Product images"],
+        summary: "Add product image",
+        description:
+          "`sellerId` must match owner. Cannot add to `removed` products. If `isMain` is true, other images for this product lose the main flag.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ProductImageCreateBody" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Created",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ProductImageResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "sellerId mismatch",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Product not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "Product removed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/products/{productId}/images/{imageId}": {
+      parameters: [
+        {
+          name: "productId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+        {
+          name: "imageId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "getProductImage",
+        tags: ["Product images"],
+        summary: "Get one product image",
+        description:
+          "Returns the image if it belongs to `productId`. Wrong `imageId` for this product yields `image_not_found` when the product exists.",
+        responses: {
+          "200": {
+            description: "Single image",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ProductImageResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "`product_not_found` or `image_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      patch: {
+        operationId: "updateProductImage",
+        tags: ["Product images"],
+        summary: "Update product image",
+        description:
+          "`sellerId` must match owner. Include at least one of `url`, `sortOrder`, `isMain`. Setting `isMain` to true clears main on other images for this product.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ProductImagePatchBody" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Updated",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ProductImageResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed or empty patch",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "sellerId mismatch",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`product_not_found` or `image_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "Product removed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        operationId: "deleteProductImage",
+        tags: ["Product images"],
+        summary: "Delete product image",
+        description:
+          "Hard-delete the image row. `sellerId` must match owner. Same envelope as listing when product or image is missing.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ProductDeleteBody" },
+            },
+          },
+        },
+        responses: {
+          "204": {
+            description: "No body",
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "sellerId mismatch",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`product_not_found` or `image_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "Product removed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
   },
   components: {
     schemas: {
       ApiErrorEnvelope: {
         type: "object",
+        description:
+          "Standard JSON error envelope. `error.code` is stable for clients; see `properties.error.properties.code.description` for common values.",
         required: ["error"],
         properties: {
           error: {
             type: "object",
             required: ["code", "message"],
             properties: {
-              code: { type: "string", example: "validation_failed" },
-              message: { type: "string" },
-              details: {},
+              code: {
+                type: "string",
+                description:
+                  "Examples: `validation_failed` (Zod/query/body/param checks), `seller_not_found`, `category_not_found`, `product_not_found`, `image_not_found`, `forbidden` (seller mismatch), `product_removed` (mutation on removed catalog row), `database_unreachable` (`GET /health/db`). Others may appear as the API grows.",
+                example: "validation_failed",
+              },
+              message: {
+                type: "string",
+                description: "Human-readable summary for logs and debugging.",
+              },
+              details: {
+                description:
+                  "Optional structured validation issues (e.g. Zod `issues`); shape varies by endpoint.",
+              },
             },
           },
         },
@@ -488,6 +760,72 @@ export const openApiDocument = {
         required: ["sellerId"],
         properties: {
           sellerId: { type: "string", format: "uuid" },
+        },
+      },
+      ProductImage: {
+        type: "object",
+        required: [
+          "id",
+          "productId",
+          "url",
+          "sortOrder",
+          "isMain",
+          "createdAt",
+        ],
+        properties: {
+          id: { type: "string", format: "uuid" },
+          productId: { type: "string", format: "uuid" },
+          url: { type: "string" },
+          sortOrder: { type: "integer" },
+          isMain: { type: "boolean" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      ProductImageListResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/ProductImage" },
+          },
+        },
+      },
+      ProductImageResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: { $ref: "#/components/schemas/ProductImage" },
+        },
+      },
+      ProductImageCreateBody: {
+        type: "object",
+        required: ["sellerId", "url"],
+        properties: {
+          sellerId: { type: "string", format: "uuid" },
+          url: {
+            type: "string",
+            format: "uri",
+            maxLength: 2048,
+          },
+          sortOrder: { type: "integer", minimum: 0, default: 0 },
+          isMain: { type: "boolean", default: false },
+        },
+      },
+      ProductImagePatchBody: {
+        type: "object",
+        required: ["sellerId"],
+        description:
+          "Provide at least one of `url`, `sortOrder`, `isMain` (enforced by the API).",
+        properties: {
+          sellerId: { type: "string", format: "uuid" },
+          url: {
+            type: "string",
+            format: "uri",
+            maxLength: 2048,
+          },
+          sortOrder: { type: "integer", minimum: 0 },
+          isMain: { type: "boolean" },
         },
       },
     },

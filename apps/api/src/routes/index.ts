@@ -1,6 +1,7 @@
 import { Router } from "express";
 import docsRoutes from "./docs.routes.js";
 import healthRoutes from "./health.routes.js";
+import productImagesRoutes from "./product-images.routes.js";
 import productsRoutes from "./products.routes.js";
 
 /**
@@ -8,6 +9,8 @@ import productsRoutes from "./products.routes.js";
  */
 export const rootRouter = Router();
 
-rootRouter.use(docsRoutes);
+/** Must stay under `/docs` — `swaggerUi.setup()` answers HTML for any request that reaches it. */
+rootRouter.use("/docs", docsRoutes);
 rootRouter.use(healthRoutes);
+rootRouter.use(productImagesRoutes);
 rootRouter.use(productsRoutes);
