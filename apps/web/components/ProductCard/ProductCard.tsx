@@ -7,7 +7,7 @@ import {
   Typography,
   Button,
 } from "@mui/material";
-import ProductDetailModal from "@/components/ProductDetailModal";
+import ProductDetailModal from "@/components/ProductDetailModal/ProductDetailModal";
 
 const ProductCard = () => {
   const [open, setOpen] = useState(false);
