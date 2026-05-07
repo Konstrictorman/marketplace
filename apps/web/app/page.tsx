@@ -1,3 +1,5 @@
+"use client";
+import ProductCard from "@/components/ProductCard/ProductCard";
 import Image from "next/image";
 
 export default function Home() {
@@ -19,6 +21,7 @@ export default function Home() {
             Work in progress...
           </p>
         </div>
+        <ProductCard />
       </main>
     </div>
   );
