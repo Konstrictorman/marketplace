@@ -1,0 +1,68 @@
+name: Deploy to Azure VM
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-master
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.AZ_VM_HOST }}
+          username: ${{ secrets.AZ_VM_USER }}
+          key: ${{ secrets.AZ_VM_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            APP_DIR="${{ secrets.AZ_VM_APP_DIR }}"
+
+            if [ -z "$APP_DIR" ]; then
+              echo "Missing required secret: AZ_VM_APP_DIR"
+              exit 1
+            fi
+
+            cd "$APP_DIR"
+            git fetch --all --prune
+            git checkout master
+            git reset --hard origin/master
+
+            docker compose up -d --build --remove-orphans
+            docker compose ps
+
+            for i in $(seq 1 30); do
+              if curl -fsS http://localhost:3001/api/health/db >/dev/null; then
+                echo "API health check passed."
+                break
+              fi
+              if [ "$i" -eq 30 ]; then
+                echo "API health check failed after retries."
+                docker compose logs --tail=200 api
+                exit 1
+              fi
+              sleep 2
+            done
+
+            for i in $(seq 1 30); do
+              if curl -fsS http://localhost:3000 >/dev/null; then
+                echo "Web health check passed."
+                break
+              fi
+              if [ "$i" -eq 30 ]; then
+                echo "Web health check failed after retries."
+                docker compose logs --tail=200 web
+                exit 1
+              fi
+              sleep 2
+            done
+
+            echo "Deployment and smoke checks succeeded."
