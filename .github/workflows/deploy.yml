@@ -1,0 +1,45 @@
+name: Deploy to Azure VM
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-master
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.AZ_VM_HOST }}
+          username: ${{ secrets.AZ_VM_USER }}
+          key: ${{ secrets.AZ_VM_SSH_KEY }}
+          script_stop: true
+          script: |
+            set -e
+            APP_DIR="${{ secrets.AZ_VM_APP_DIR }}"
+
+            if [ -z "$APP_DIR" ]; then
+              echo "Missing required secret: AZ_VM_APP_DIR"
+              exit 1
+            fi
+
+            cd "$APP_DIR"
+            git fetch --all --prune
+            git checkout master
+            git reset --hard origin/master
+
+            docker compose up -d --build --remove-orphans
+            docker compose ps
+
+            curl -fsS http://localhost:3001/api/health/db >/dev/null
+            curl -fsS http://localhost:3000 >/dev/null
+
+            echo "Deployment and smoke checks succeeded."
