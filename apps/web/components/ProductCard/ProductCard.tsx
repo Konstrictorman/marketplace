@@ -6,19 +6,20 @@ import {
 } from "@mui/material";
 import ProductDetailModal from "@/components/ProductDetailModal/ProductDetailModal";
 
-const ProductCard = () => {
+type ProductCardProps = {
+  product:{
+    name: string;
+    price: number;
+    description: string;
+    stock: number;
+    rating: number;
+    condition: "new" | "used";
+    image: string;
+  }
+}
+
+const ProductCard = ({ product }: ProductCardProps) => {
   const [open, setOpen] = useState(false);
-
-  const product = {
-    name: "Product Name",
-    price: 29.99,
-    description: "This is a detailed description of the product. It explains what the product does, its key features, materials, and anything else the buyer should know before purchasing.",
-    stock: 8,
-    rating: 4.5,
-    condition: "new" as "new" | "used",
-    image: "https://placehold.co/280x180/1837A0/FEFEFE?text=Product",
-  };
-
   return (
     <>
       <Card sx={{

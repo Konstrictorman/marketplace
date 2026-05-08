@@ -4,7 +4,7 @@ import {
   Chip, Divider, Rating
 } from "@mui/material";
 
-const ProductDetailModal = ({ open, onClose, product }: {
+type ProductDetailModalProps = {
   open: boolean;
   onClose: () => void;
   product: {
@@ -16,7 +16,9 @@ const ProductDetailModal = ({ open, onClose, product }: {
     condition: "new" | "used";
     image: string;
   };
-}) => {
+}
+
+const ProductDetailModal =({ open, onClose, product}: ProductDetailModalProps) => {
   const inStock = product.stock > 0;
 
   return (
