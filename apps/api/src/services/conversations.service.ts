@@ -4,7 +4,7 @@ import { HttpError } from "../lib/http-errors.js";
 
 type ConversationBaseRow = {
   id: string;
-  productId: string;
+  productId: string | null;
   createdAt: Date;
 };
 
