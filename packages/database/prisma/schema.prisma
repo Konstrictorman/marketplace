@@ -1,5 +1,3 @@
-// https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,7 +7,222 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// --- Enums (PostgreSQL native enums) ---
+/// Aligns with `public.users` (institutional profile + `password_hash`).
+model User {
+  id                                 String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  institutionalEmail                 String                    @unique @map("institutional_email") @db.VarChar(255)
+  passwordHash                       String                    @map("password_hash")
+  name                               String                    @db.VarChar(150)
+  career                             String?                   @db.VarChar(150)
+  photoUrl                           String?                   @map("photo_url")
+  reputation                         Decimal                   @default(0) @db.Decimal(3, 2)
+  isActive                           Boolean                   @default(true) @map("is_active")
+  createdAt                          DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                          DateTime                  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  conversationParticipants           ConversationParticipant[]
+  messagesSent                       Message[]
+  notifications                      Notification[]
+  orderItemsAsSeller                 OrderItem[]               @relation("SellerOrderItems")
+  ordersAsBuyer                      Order[]                   @relation("BuyerOrders")
+  productsSold                       Product[]                 @relation("SellerProducts")
+  reportsFiled                       Report[]                  @relation("ReporterReports")
+  reports_reports_reviewed_byTousers Report[]                  @relation("reports_reviewed_byTousers")
+  reviewsReceived                    Review[]                  @relation("ReviewedUserReviews")
+  reviewsWritten                     Review[]                  @relation("ReviewerReviews")
+  roles                              UserRole[]
+
+  @@index([institutionalEmail], map: "idx_users_email")
+  @@map("users")
+}
+
+model Role {
+  id          String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String     @unique @db.VarChar(50)
+  description String?
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  users       UserRole[]
+
+  @@map("roles")
+}
+
+model UserRole {
+  userId    String   @map("user_id") @db.Uuid
+  roleId    String   @map("role_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  role      Role     @relation(fields: [roleId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([userId, roleId])
+  @@map("user_roles")
+}
+
+model Category {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String    @unique @db.VarChar(100)
+  description String?
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  products    Product[]
+
+  @@map("categories")
+}
+
+/// This model contains an expression index which requires additional setup for migrations. Visit https://pris.ly/d/expression-indexes for more info.
+model Product {
+  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sellerId      String           @map("seller_id") @db.Uuid
+  categoryId    String           @map("category_id") @db.Uuid
+  title         String           @db.VarChar(100)
+  description   String
+  price         Decimal          @db.Decimal(12, 2)
+  condition     ProductCondition
+  inventory     Int
+  status        ProductStatus    @default(active)
+  createdAt     DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  conversations Conversation[]
+  orderItems    OrderItem[]
+  images        ProductImage[]
+  category      Category         @relation(fields: [categoryId], references: [id], onUpdate: NoAction)
+  seller        User             @relation("SellerProducts", fields: [sellerId], references: [id], onUpdate: NoAction)
+
+  @@index([categoryId], map: "idx_products_category")
+  @@index([createdAt(sort: Desc)], map: "idx_products_created_at")
+  @@index([sellerId], map: "idx_products_seller")
+  @@index([status], map: "idx_products_status")
+  @@map("products")
+}
+
+model ProductImage {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  url       String
+  sortOrder Int      @default(0) @map("sort_order")
+  isMain    Boolean  @default(false) @map("is_main")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@map("product_images")
+}
+
+model Order {
+  id        String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  buyerId   String      @map("buyer_id") @db.Uuid
+  status    OrderStatus @default(pending)
+  total     Decimal     @default(0) @db.Decimal(12, 2)
+  createdAt DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  items     OrderItem[]
+  buyer     User        @relation("BuyerOrders", fields: [buyerId], references: [id], onUpdate: NoAction)
+
+  @@index([buyerId], map: "idx_orders_buyer")
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  orderId   String   @map("order_id") @db.Uuid
+  productId String   @map("product_id") @db.Uuid
+  sellerId  String   @map("seller_id") @db.Uuid
+  quantity  Int
+  unitPrice Decimal  @map("unit_price") @db.Decimal(12, 2)
+  subtotal  Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  product   Product  @relation(fields: [productId], references: [id], onUpdate: NoAction)
+  seller    User     @relation("SellerOrderItems", fields: [sellerId], references: [id], onUpdate: NoAction)
+  reviews   Review?
+
+  @@unique([orderId, productId], map: "uq_order_items_order_product")
+  @@index([sellerId], map: "idx_order_items_seller")
+  @@map("order_items")
+}
+
+model Conversation {
+  id           String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  productId    String?                   @map("product_id") @db.Uuid
+  createdAt    DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  participants ConversationParticipant[]
+  product      Product?                  @relation(fields: [productId], references: [id], onUpdate: NoAction)
+  messages     Message[]
+
+  @@map("conversations")
+}
+
+model ConversationParticipant {
+  conversationId String       @map("conversation_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([conversationId, userId])
+  @@map("conversation_participants")
+}
+
+model Message {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  conversationId String       @map("conversation_id") @db.Uuid
+  senderId       String       @map("sender_id") @db.Uuid
+  content        String
+  sent_at        DateTime     @default(now()) @db.Timestamptz(6)
+  isRead         Boolean      @default(false) @map("is_read")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  sender         User         @relation(fields: [senderId], references: [id], onUpdate: NoAction)
+
+  @@index([conversationId, sent_at], map: "idx_messages_conversation_sent_at")
+  @@map("messages")
+}
+
+model Review {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reviewerId     String    @map("reviewer_id") @db.Uuid
+  reviewedUserId String    @map("reviewed_user_id") @db.Uuid
+  order_item_id  String    @unique(map: "uq_reviews_order_item") @db.Uuid
+  rating         Int
+  comment        String?
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  order_items    OrderItem @relation(fields: [order_item_id], references: [id], onUpdate: NoAction)
+  reviewedUser   User      @relation("ReviewedUserReviews", fields: [reviewedUserId], references: [id], onUpdate: NoAction)
+  reviewer       User      @relation("ReviewerReviews", fields: [reviewerId], references: [id], onUpdate: NoAction)
+
+  @@index([reviewedUserId], map: "idx_reviews_reviewed_user")
+  @@map("reviews")
+}
+
+model Notification {
+  id             String                       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId         String                       @map("user_id") @db.Uuid
+  type           String                       @db.VarChar(80)
+  reference_type notification_reference_type?
+  referenceId    String?                      @map("reference_id") @db.Uuid
+  status         NotificationStatus           @default(unread)
+  createdAt      DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
+  readAt         DateTime?                    @map("read_at") @db.Timestamptz(6)
+  user           User                         @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([userId, status], map: "idx_notifications_user_status")
+  @@map("notifications")
+}
+
+model Report {
+  id                               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  reporterId                       String           @map("reporter_id") @db.Uuid
+  targetType                       ReportTargetType @map("target_type")
+  targetId                         String           @map("target_id") @db.Uuid
+  reason                           String           @db.VarChar(120)
+  description                      String?
+  status                           ReportStatus     @default(pending)
+  createdAt                        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  reviewedAt                       DateTime?        @map("reviewed_at") @db.Timestamptz(6)
+  reviewed_by                      String?          @db.Uuid
+  reporter                         User             @relation("ReporterReports", fields: [reporterId], references: [id], onUpdate: NoAction)
+  users_reports_reviewed_byTousers User?            @relation("reports_reviewed_byTousers", fields: [reviewed_by], references: [id], onUpdate: NoAction)
+
+  @@index([status], map: "idx_reports_status")
+  @@index([targetType, targetId], map: "idx_reports_target")
+  @@map("reports")
+}
 
 enum ProductCondition {
   new
@@ -19,8 +232,10 @@ enum ProductCondition {
 }
 
 enum ProductStatus {
+  draft
   active
   inactive
+  sold
   removed
 
   @@map("product_status")
@@ -36,263 +251,34 @@ enum OrderStatus {
 }
 
 enum NotificationStatus {
-  pending
-  sent
-  failed
+  unread
+  read
 
   @@map("notification_status")
 }
 
 enum ReportStatus {
-  open
-  under_review
-  resolved
+  pending
+  reviewed
   dismissed
+  action_taken
 
   @@map("report_status")
 }
 
 enum ReportTargetType {
-  user
   product
-  conversation
+  user
   message
+  review
 
   @@map("report_target_type")
 }
 
-// --- Core auth & profiles ---
-
-model User {
-  id         String   @id @default(uuid())
-  email      String   @unique
-  password   String
-  name       String
-  surname    String
-  phone      String?
-  photoUrl   String?  @map("photo_url")
-  reputation Decimal  @default(0) @db.Decimal(5, 2)
-  isActive   Boolean  @default(true) @map("is_active")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
-
-  roles                   UserRole[]
-  productsSold          Product[]              @relation("SellerProducts")
-  ordersAsBuyer         Order[]                @relation("BuyerOrders")
-  orderItemsAsSeller    OrderItem[]            @relation("SellerOrderItems")
-  conversationParticipants ConversationParticipant[]
-  messagesSent          Message[]
-  reviewsWritten        Review[]               @relation("ReviewerReviews")
-  reviewsReceived       Review[]               @relation("ReviewedUserReviews")
-  notifications         Notification[]
-  reportsFiled          Report[]               @relation("ReporterReports")
-  reportsAgainst        Report[]               @relation("TargetUserReports")
-  reportsReviewed       Report[]               @relation("ReviewedByReports")
-
-  @@map("users")
-}
-
-model Role {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String?
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  users UserRole[]
-
-  @@map("roles")
-}
-
-model UserRole {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  roleId    String   @map("role_id")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, roleId])
-  @@map("user_roles")
-}
-
-// --- Catalog ---
-
-model Category {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  products Product[]
-
-  @@map("categories")
-}
-
-model Product {
-  id          String           @id @default(uuid())
-  sellerId    String           @map("seller_id")
-  categoryId  String           @map("category_id")
-  title       String
-  description String           @db.Text
-  price       Decimal          @db.Decimal(12, 2)
-  condition   ProductCondition
-  inventory   Int              @default(0)
-  status      ProductStatus    @default(active)
-  createdAt   DateTime         @default(now()) @map("created_at")
-  updatedAt   DateTime         @updatedAt @map("updated_at")
-
-  seller        User              @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: Cascade)
-  category      Category          @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  images        ProductImage[]
-  orderItems    OrderItem[]
-  conversations Conversation[]
-
-  @@map("products")
-}
-
-model ProductImage {
-  id        String   @id @default(uuid())
-  productId String   @map("product_id")
-  url       String
-  sortOrder Int      @default(0) @map("sort_order")
-  isMain    Boolean  @default(false) @map("is_main")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
-
-  @@map("product_images")
-}
-
-// --- Orders ---
-
-model Order {
-  id          String      @id @default(uuid())
-  buyerId     String      @map("buyer_id")
-  status      OrderStatus @default(pending)
-  totalAmount Decimal     @map("total_amount") @db.Decimal(12, 2)
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
-
-  buyer     User        @relation("BuyerOrders", fields: [buyerId], references: [id], onDelete: Restrict)
-  items     OrderItem[]
-  reviews   Review[]
-
-  @@map("orders")
-}
-
-model OrderItem {
-  id         String   @id @default(uuid())
-  orderId    String   @map("order_id")
-  productId  String   @map("product_id")
-  sellerId   String   @map("seller_id")
-  quantity   Int
-  unitPrice  Decimal  @map("unit_price") @db.Decimal(12, 2)
-  subtotal   Decimal  @db.Decimal(12, 2)
-  createdAt  DateTime @default(now()) @map("created_at")
-
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
-  seller  User    @relation("SellerOrderItems", fields: [sellerId], references: [id], onDelete: Restrict)
-
-  @@map("order_items")
-}
-
-// --- Messaging ---
-
-model Conversation {
-  id        String   @id @default(uuid())
-  productId String   @map("product_id")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  product      Product                   @relation(fields: [productId], references: [id], onDelete: Cascade)
-  participants ConversationParticipant[]
-  messages     Message[]
-
-  @@map("conversations")
-}
-
-model ConversationParticipant {
-  id             String   @id @default(uuid())
-  conversationId String @map("conversation_id")
-  userId         String   @map("user_id")
-  createdAt      DateTime @default(now()) @map("created_at")
-
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([conversationId, userId])
-  @@map("conversation_participants")
-}
-
-model Message {
-  id             String   @id @default(uuid())
-  conversationId String   @map("conversation_id")
-  senderId       String   @map("sender_id")
-  content        String   @db.Text
-  createdAt      DateTime @default(now()) @map("created_at")
-  isRead         Boolean  @default(false) @map("is_read")
-
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
-
-  @@map("messages")
-}
-
-// --- Reviews ---
-
-model Review {
-  id              String   @id @default(uuid())
-  reviewerId      String   @map("reviewer_id")
-  reviewedUserId  String   @map("reviewed_user_id")
-  orderId         String   @map("order_id")
-  rating          Int
-  comment         String?  @db.Text
-  createdAt       DateTime @default(now()) @map("created_at")
-
-  reviewer     User  @relation("ReviewerReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
-  reviewedUser User  @relation("ReviewedUserReviews", fields: [reviewedUserId], references: [id], onDelete: Cascade)
-  order        Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@unique([orderId])
-  @@map("reviews")
-}
-
-// --- Notifications & moderation ---
-
-model Notification {
-  id          String              @id @default(uuid())
-  userId      String              @map("user_id")
-  type        String
-  referenceId String?             @map("reference_id")
-  message     String              @db.Text
-  isRead      Boolean             @default(false) @map("is_read")
-  status      NotificationStatus  @default(pending)
-  createdAt   DateTime            @default(now()) @map("created_at")
-  readAt      DateTime?           @map("read_at")
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("notifications")
-}
-
-model Report {
-  id             String            @id @default(uuid())
-  reporterId     String            @map("reporter_id")
-  targetUserId   String?           @map("target_user_id")
-  targetType     ReportTargetType  @map("target_type")
-  targetId       String            @map("target_id")
-  reason         String
-  description    String?           @db.Text
-  status         ReportStatus      @default(open)
-  createdAt      DateTime          @default(now()) @map("created_at")
-  reviewedAt     DateTime?         @map("reviewed_at")
-  reviewedById   String?           @map("reviewed_by_id")
-
-  reporter   User  @relation("ReporterReports", fields: [reporterId], references: [id], onDelete: Cascade)
-  targetUser User? @relation("TargetUserReports", fields: [targetUserId], references: [id], onDelete: SetNull)
-  reviewedBy User? @relation("ReviewedByReports", fields: [reviewedById], references: [id], onDelete: SetNull)
-
-  @@map("reports")
+enum notification_reference_type {
+  message
+  order
+  review
+  product
+  report
 }

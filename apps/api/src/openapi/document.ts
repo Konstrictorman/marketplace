@@ -28,6 +28,16 @@ export const openApiDocument = {
       description:
         "Gallery URLs per product (`sellerId` in body enforced until auth is wired)",
     },
+    {
+      name: "Conversations",
+      description:
+        "Buyer/seller threads for a product (`userId`/`buyerId` in query/body until auth is wired)",
+    },
+    {
+      name: "Orders",
+      description:
+        "Orders and line items. **Interim identity:** `buyerId` is optional on all order and order-item routes (query or JSON body). When provided it must match the order’s buyer (`403` otherwise). Replace with JWT/session auth when available.",
+    },
   ],
   paths: {
     "/health": {
@@ -582,6 +592,1029 @@ export const openApiDocument = {
         },
       },
     },
+    "/conversations": {
+      get: {
+        operationId: "listConversations",
+        tags: ["Conversations"],
+        summary: "List conversations for user",
+        parameters: [
+          {
+            name: "userId",
+            in: "query",
+            required: false,
+            schema: { type: "string", format: "uuid" },
+          },
+          {
+            name: "page",
+            in: "query",
+            schema: { type: "integer", minimum: 1, default: 1 },
+          },
+          {
+            name: "pageSize",
+            in: "query",
+            schema: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+          },
+          {
+            name: "productId",
+            in: "query",
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Paged list for the participant user",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ConversationListResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        operationId: "createConversation",
+        tags: ["Conversations"],
+        summary: "Create conversation",
+        description:
+          "Creates buyer/seller conversation for a product. If one already exists for that product + pair, returns it.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ConversationCreateBody" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Created",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ConversationResponse" },
+              },
+            },
+          },
+          "200": {
+            description: "Existing conversation returned (idempotent create)",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ConversationResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Product or buyer not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "Invalid participants (buyer equals seller)",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/conversations/{id}": {
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "getConversation",
+        tags: ["Conversations"],
+        summary: "Get conversation by id",
+        parameters: [
+          {
+            name: "userId",
+            in: "query",
+            required: false,
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Conversation detail for participant",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ConversationResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "Not a participant",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Conversation not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        operationId: "deleteConversation",
+        tags: ["Conversations"],
+        summary: "Delete conversation",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ConversationDeleteBody" },
+            },
+          },
+        },
+        responses: {
+          "204": {
+            description: "No body",
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "Not a participant",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Conversation not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/conversations/{conversationId}/participants": {
+      parameters: [
+        {
+          name: "conversationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "listConversationParticipants",
+        tags: ["Conversations"],
+        summary: "List participants in conversation",
+        parameters: [
+          {
+            name: "userId",
+            in: "query",
+            required: false,
+            description:
+              "Optional caller identity for participant-only access until auth is wired. Omitted returns participants when the conversation exists.",
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Conversation participants",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ConversationParticipantListResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "Not a participant",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Conversation not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        operationId: "addConversationParticipant",
+        tags: ["Conversations"],
+        summary: "Add participant to conversation",
+        description:
+          "Actor must already be a conversation participant. `actorUserId` represents the caller identity while JWT/session auth is not wired. Returns existing participant when already present.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/ConversationParticipantCreateBody",
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Participant added",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ConversationParticipantResponse",
+                },
+              },
+            },
+          },
+          "200": {
+            description: "Existing participant returned (idempotent add)",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ConversationParticipantResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "Not a participant",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Conversation or user not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/conversations/{conversationId}/participants/{participantId}": {
+      parameters: [
+        {
+          name: "conversationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+        {
+          name: "participantId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "getConversationParticipant",
+        tags: ["Conversations"],
+        summary: "Get one conversation participant",
+        parameters: [
+          {
+            name: "userId",
+            in: "query",
+            required: false,
+            description:
+              "Optional caller identity for participant-only access until auth is wired. Omitted returns the participant row if it exists for this conversation.",
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Participant detail",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ConversationParticipantResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "Not a participant",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Conversation or participant not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        operationId: "deleteConversationParticipant",
+        tags: ["Conversations"],
+        summary: "Delete conversation participant",
+        description:
+          "`actorUserId` represents the caller identity while JWT/session auth is not wired.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/ConversationParticipantDeleteBody",
+              },
+            },
+          },
+        },
+        responses: {
+          "204": {
+            description: "No body",
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "Not a participant",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Conversation or participant not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "Minimum participants required",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/orders": {
+      get: {
+        operationId: "listOrders",
+        tags: ["Orders"],
+        summary: "List orders",
+        description:
+          "Paged order summaries (no embedded line items). Omit `buyerId` to list all buyers’ orders; include it to filter. Combine with optional `status`.",
+        parameters: [
+          {
+            name: "buyerId",
+            in: "query",
+            required: false,
+            description:
+              "Filter by buyer. Omit for an unfiltered list (interim behavior until auth).",
+            schema: { type: "string", format: "uuid" },
+          },
+          {
+            name: "page",
+            in: "query",
+            description: "1-based page index",
+            schema: { type: "integer", minimum: 1, default: 1 },
+          },
+          {
+            name: "pageSize",
+            in: "query",
+            schema: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+          },
+          {
+            name: "status",
+            in: "query",
+            description: "Filter by order lifecycle status",
+            schema: { $ref: "#/components/schemas/OrderStatus" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Paged order summaries (no embedded items)",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/OrderListResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        operationId: "createOrder",
+        tags: ["Orders"],
+        summary: "Create order with line items",
+        description:
+          "Creates a pending order, snapshots line pricing, decrements product inventory atomically. Duplicate `productId` entries in `items` are combined into a single line (quantities summed).",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/OrderCreateBody" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Created",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/OrderDetailResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`buyer_not_found` or `product_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description:
+              "`insufficient_inventory`, `product_removed`, or `product_not_available`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/orders/{orderId}": {
+      parameters: [
+        {
+          name: "orderId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "getOrder",
+        tags: ["Orders"],
+        summary: "Get order with items",
+        description:
+          "Returns full order including line items. Optional query `buyerId`: if sent, it must equal the order’s buyer or the API returns `403`. If omitted, any caller may read the order by id (interim until auth).",
+        parameters: [
+          {
+            name: "buyerId",
+            in: "query",
+            required: false,
+            description:
+              "When provided, must match `data.buyerId` on the order (`403 forbidden` otherwise).",
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Order detail including line items",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/OrderDetailResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description:
+              "`forbidden` when `buyerId` is provided but does not match the order buyer",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`order_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      patch: {
+        operationId: "patchOrder",
+        tags: ["Orders"],
+        summary: "Patch order (status)",
+        description:
+          "Updates order status. **`status` is required** in the JSON body. **`buyerId` is optional**; when present it must match the order buyer (`403` otherwise). Typical buyer action: set `status` to `cancelled` while the order is `pending` (restores inventory). Sending `cancelled` when already `cancelled` is idempotent. Sending the same non-cancel status as the current status is a no-op (`200`). Other transitions return `409 invalid_order_transition`.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/OrderPatchBody" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Updated order with items",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/OrderDetailResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description:
+              "`forbidden` when `buyerId` is provided but does not match the order buyer",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`order_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description:
+              "`invalid_order_transition`, `cancelled_only_from_pending`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        operationId: "deleteOrder",
+        tags: ["Orders"],
+        summary: "Delete pending order",
+        description:
+          "Hard-deletes the order while pending after restoring inventory. Optional JSON body with `buyerId`; when provided, must match the order buyer. Body may be omitted.",
+        requestBody: {
+          required: false,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/OrderDeleteBody" },
+            },
+          },
+        },
+        responses: {
+          "204": { description: "No body" },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description:
+              "`forbidden` when `buyerId` is provided but does not match the order buyer",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`order_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "`order_not_pending`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/orders/{orderId}/items": {
+      parameters: [
+        {
+          name: "orderId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "listOrderItems",
+        tags: ["Orders"],
+        summary: "List order line items",
+        description:
+          "Optional query `buyerId`: when provided, must equal the order’s buyer (`403` otherwise). Omit for interim unauthenticated access.",
+        parameters: [
+          {
+            name: "buyerId",
+            in: "query",
+            required: false,
+            description: "When provided, must match the order buyer user id.",
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Line items only",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/OrderItemListResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description:
+              "`forbidden` when query parameter `buyerId` is provided but does not match the order buyer",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`order_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        operationId: "addOrderItem",
+        tags: ["Orders"],
+        summary: "Add line item",
+        description:
+          "Pending orders only; returns full order with items. Optional body `buyerId`; when set must match the order buyer. If the order already has a line for `productId`, quantities are merged on that line (same `unitPrice` snapshot as the existing row).",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/OrderItemCreateBody" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Updated order detail",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/OrderDetailResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description:
+              "`forbidden` when JSON body property `buyerId` is provided but does not match the order buyer",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`order_not_found` or `product_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description:
+              "`order_not_pending`, `insufficient_inventory`, `product_removed`, or `product_not_available`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/orders/{orderId}/items/{itemId}": {
+      parameters: [
+        {
+          name: "orderId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+        {
+          name: "itemId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "getOrderItem",
+        tags: ["Orders"],
+        summary: "Get one line item",
+        description:
+          "Optional query `buyerId`: when provided, must equal the order’s buyer (`403` otherwise). Omit for interim unauthenticated access.",
+        parameters: [
+          {
+            name: "buyerId",
+            in: "query",
+            required: false,
+            description: "When provided, must match the order buyer user id.",
+            schema: { type: "string", format: "uuid" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Line item row",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/OrderItemResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description:
+              "`forbidden` when query parameter `buyerId` is provided but does not match the order buyer",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`order_not_found` or `order_item_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      patch: {
+        operationId: "patchOrderItem",
+        tags: ["Orders"],
+        summary: "Patch line quantity",
+        description:
+          "Pending orders only; `unitPrice` snapshot is unchanged. Optional body `buyerId`; when set must match the order buyer.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/OrderItemPatchBody" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Updated order detail",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/OrderDetailResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description:
+              "`forbidden` when JSON body property `buyerId` is provided but does not match the order buyer",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`order_not_found` or `order_item_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "`order_not_pending` or `insufficient_inventory`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        operationId: "deleteOrderItem",
+        tags: ["Orders"],
+        summary: "Delete line item",
+        description:
+          "Restores quantity to inventory; pending only. Optional body `buyerId`; when set must match the order buyer. Body may be omitted.",
+        requestBody: {
+          required: false,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/OrderItemDeleteBody" },
+            },
+          },
+        },
+        responses: {
+          "204": { description: "No body" },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description:
+              "`forbidden` when JSON body property `buyerId` is provided but does not match the order buyer",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`order_not_found` or `order_item_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "`order_not_pending`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
   },
   components: {
     schemas: {
@@ -598,7 +1631,7 @@ export const openApiDocument = {
               code: {
                 type: "string",
                 description:
-                  "Examples: `validation_failed` (Zod/query/body/param checks), `seller_not_found`, `category_not_found`, `product_not_found`, `image_not_found`, `forbidden` (seller mismatch), `product_removed` (mutation on removed catalog row), `database_unreachable` (`GET /health/db`). Others may appear as the API grows.",
+                  "Stable machine code. Includes API codes (`validation_failed`, `buyer_not_found`, `order_not_found`, …) and Prisma client codes (`P2002`, `P2003`, …) when the handler surfaces them. Also `internal_error`, `route_not_found`, `database_unavailable`.",
                 example: "validation_failed",
               },
               message: {
@@ -621,6 +1654,181 @@ export const openApiDocument = {
           pageSize: { type: "integer" },
           total: { type: "integer" },
           totalPages: { type: "integer" },
+        },
+      },
+      OrderStatus: {
+        type: "string",
+        enum: ["pending", "confirmed", "delivered", "cancelled"],
+      },
+      OrderItem: {
+        type: "object",
+        description:
+          "One catalog line on an order. The database enforces at most one row per (`orderId`,`productId`); adding the same product again merges quantity on that row (see `POST /orders/{orderId}/items`).",
+        required: [
+          "id",
+          "orderId",
+          "productId",
+          "sellerId",
+          "quantity",
+          "unitPrice",
+          "subtotal",
+          "createdAt",
+        ],
+        properties: {
+          id: { type: "string", format: "uuid" },
+          orderId: { type: "string", format: "uuid" },
+          productId: { type: "string", format: "uuid" },
+          sellerId: { type: "string", format: "uuid" },
+          quantity: { type: "integer", minimum: 1 },
+          unitPrice: { type: "string", description: "Decimal string snapshot" },
+          subtotal: { type: "string", description: "Decimal string" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      OrderSummary: {
+        type: "object",
+        description:
+          "List row. `totalAmount` is the JSON field for the order total (decimal string); it maps from the persisted order total in the database.",
+        required: [
+          "id",
+          "buyerId",
+          "status",
+          "totalAmount",
+          "createdAt",
+          "updatedAt",
+        ],
+        properties: {
+          id: { type: "string", format: "uuid" },
+          buyerId: { type: "string", format: "uuid" },
+          status: { $ref: "#/components/schemas/OrderStatus" },
+          totalAmount: {
+            type: "string",
+            example: "99.98",
+            description:
+              "Total for the order (sum of line subtotals at persist time).",
+          },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      OrderDetail: {
+        allOf: [
+          { $ref: "#/components/schemas/OrderSummary" },
+          {
+            type: "object",
+            required: ["items"],
+            properties: {
+              items: {
+                type: "array",
+                items: { $ref: "#/components/schemas/OrderItem" },
+              },
+            },
+          },
+        ],
+      },
+      OrderListResponse: {
+        type: "object",
+        required: ["data", "meta"],
+        properties: {
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/OrderSummary" },
+          },
+          meta: { $ref: "#/components/schemas/PaginationMeta" },
+        },
+      },
+      OrderDetailResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: { $ref: "#/components/schemas/OrderDetail" },
+        },
+      },
+      OrderCreateBody: {
+        type: "object",
+        description:
+          "`buyerId` must exist in `users`. Line items reference active catalog products with sufficient inventory.",
+        required: ["buyerId", "items"],
+        properties: {
+          buyerId: { type: "string", format: "uuid" },
+          items: {
+            type: "array",
+            description:
+              "Non-empty. Duplicate `productId` values are merged into one line each (quantities summed, single price snapshot per product).",
+            minItems: 1,
+            items: {
+              type: "object",
+              required: ["productId", "quantity"],
+              properties: {
+                productId: { type: "string", format: "uuid" },
+                quantity: { type: "integer", minimum: 1 },
+              },
+            },
+          },
+        },
+      },
+      OrderPatchBody: {
+        type: "object",
+        description:
+          "`status` is required. `buyerId` is optional; when provided it must match the order’s buyer (`403` otherwise).",
+        required: ["status"],
+        properties: {
+          buyerId: { type: "string", format: "uuid" },
+          status: { $ref: "#/components/schemas/OrderStatus" },
+        },
+      },
+      OrderDeleteBody: {
+        type: "object",
+        description:
+          "Optional body. `buyerId` may be omitted (interim). When provided it must match the order buyer. Clients may send `{}` or omit the body entirely.",
+        properties: {
+          buyerId: { type: "string", format: "uuid" },
+        },
+      },
+      OrderItemListResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/OrderItem" },
+          },
+        },
+      },
+      OrderItemResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: { $ref: "#/components/schemas/OrderItem" },
+        },
+      },
+      OrderItemCreateBody: {
+        type: "object",
+        description:
+          "`productId` and `quantity` are required. Optional `buyerId`; when provided it must match the parent order’s buyer. Order must be `pending`. If a line for `productId` already exists, quantity is increased and `unitPrice` stays the snapshot from the first line.",
+        required: ["productId", "quantity"],
+        properties: {
+          buyerId: { type: "string", format: "uuid" },
+          productId: { type: "string", format: "uuid" },
+          quantity: { type: "integer", minimum: 1 },
+        },
+      },
+      OrderItemPatchBody: {
+        type: "object",
+        description:
+          "`quantity` is required (≥ 1). Optional `buyerId`; when provided it must match the parent order’s buyer.",
+        required: ["quantity"],
+        properties: {
+          buyerId: { type: "string", format: "uuid" },
+          quantity: { type: "integer", minimum: 1 },
+        },
+      },
+      OrderItemDeleteBody: {
+        type: "object",
+        description:
+          "Optional. `buyerId` may be omitted (interim). When provided it must match the parent order’s buyer.",
+        properties: {
+          buyerId: { type: "string", format: "uuid" },
         },
       },
       ProductCondition: {
@@ -826,6 +2034,104 @@ export const openApiDocument = {
           },
           sortOrder: { type: "integer", minimum: 0 },
           isMain: { type: "boolean" },
+        },
+      },
+      ConversationParticipantRef: {
+        type: "object",
+        required: ["userId"],
+        properties: {
+          userId: { type: "string", format: "uuid" },
+        },
+      },
+      Conversation: {
+        type: "object",
+        required: ["id", "productId", "createdAt", "participants"],
+        properties: {
+          id: { type: "string", format: "uuid" },
+          productId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          participants: {
+            type: "array",
+            items: { $ref: "#/components/schemas/ConversationParticipantRef" },
+          },
+        },
+      },
+      ConversationResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: { $ref: "#/components/schemas/Conversation" },
+        },
+      },
+      ConversationListResponse: {
+        type: "object",
+        required: ["data", "meta"],
+        properties: {
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Conversation" },
+          },
+          meta: { $ref: "#/components/schemas/PaginationMeta" },
+        },
+      },
+      ConversationCreateBody: {
+        type: "object",
+        required: ["productId", "buyerId"],
+        properties: {
+          productId: { type: "string", format: "uuid" },
+          buyerId: { type: "string", format: "uuid" },
+        },
+      },
+      ConversationDeleteBody: {
+        type: "object",
+        required: ["userId"],
+        properties: {
+          userId: { type: "string", format: "uuid" },
+        },
+      },
+      ConversationParticipant: {
+        type: "object",
+        required: ["conversationId", "userId", "createdAt"],
+        properties: {
+          conversationId: { type: "string", format: "uuid" },
+          userId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      ConversationParticipantResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: { $ref: "#/components/schemas/ConversationParticipant" },
+        },
+      },
+      ConversationParticipantListResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/ConversationParticipant" },
+          },
+        },
+      },
+      ConversationParticipantCreateBody: {
+        type: "object",
+        required: ["actorUserId", "userId"],
+        description:
+          "`actorUserId` is the requester identity used for authorization until JWT/session auth is wired. `userId` is the participant to add.",
+        properties: {
+          actorUserId: { type: "string", format: "uuid" },
+          userId: { type: "string", format: "uuid" },
+        },
+      },
+      ConversationParticipantDeleteBody: {
+        type: "object",
+        required: ["actorUserId"],
+        description:
+          "`actorUserId` is the requester identity used for authorization until JWT/session auth is wired.",
+        properties: {
+          actorUserId: { type: "string", format: "uuid" },
         },
       },
     },
