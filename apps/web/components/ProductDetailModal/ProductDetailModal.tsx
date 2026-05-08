@@ -210,20 +210,6 @@ const ProductDetailModal = ({ open, onClose, product }: ProductDetailModalProps)
             Add to Cart
           </Button>
         </Box>
-
-          <Button
-            variant="contained"
-            fullWidth
-            sx={{
-              borderRadius: "10px",
-              py: 1.2,
-              backgroundColor: "rgb(24, 62, 157)",
-              "&:hover": { backgroundColor: "rgb(29, 54, 120)" },
-            }}
-          >
-            Add to Cart
-          </Button>
-        </Box>
       </Box>
     </Modal>
   );
