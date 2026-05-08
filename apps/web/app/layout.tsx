@@ -30,6 +30,9 @@ export default function RootLayout({
           <Link href="/Login" className="hover:underline">
             Login
           </Link>
+          <Link href="/vender" className="hover:underline">
+            Vender
+          </Link>
         </nav>
         <main className="flex-1 flex flex-col bg-zinc-100 dark:bg-zinc-900">
           {children}
