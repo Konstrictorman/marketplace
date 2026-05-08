@@ -2,6 +2,16 @@
 import ProductCard from "@/components/ProductCard/ProductCard";
 import Image from "next/image";
 
+const product = {
+  name: "Product Name",
+  price: 29.99,
+  description: "This is a detailed description of the product. It explains what the product does, its key features, materials, and anything else the buyer should know before purchasing.",
+  stock: 8,
+  rating: 4.5,
+  condition: "new" as "new" | "used",
+  image: "https://placehold.co/280x180/1837A0/FEFEFE?text=Product",
+};
+
 export default function Home() {
   return (
     <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
@@ -21,15 +31,7 @@ export default function Home() {
             Work in progress...
           </p>
         </div>
-        <ProductCard product={{
-          name: "Product Name",
-          price: 29.99,
-          description: "This is a detailed description of the product. It explains what the product does, its key features, materials, and anything else the buyer should know before purchasing.",
-          stock: 8,
-          rating: 4.5,
-          condition: "new" as "new" | "used",
-          image: "https://placehold.co/280x180/1837A0/FEFEFE?text=Product",
-        }}/>
+        <ProductCard  product={product}/>
       </main>
     </div>
   );
