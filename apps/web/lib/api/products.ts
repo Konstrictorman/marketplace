@@ -95,20 +95,25 @@ export type DeleteProductImageBody = {
 };
 
 export async function listProducts(query: ListProductsQuery = {}) {
-  const { data } = await apiClient.get<{ data: ProductListItem[]; meta: PaginationMeta }>(
-    "/api/products",
-    { params: query },
-  );
+  const { data } = await apiClient.get<{
+    data: ProductListItem[];
+    meta: PaginationMeta;
+  }>("/api/products", { params: query });
   return data;
 }
 
 export async function createProduct(body: CreateProductBody) {
-  const { data } = await apiClient.post<{ data: Product }>("/api/products", body);
+  const { data } = await apiClient.post<{ data: Product }>(
+    "/api/products",
+    body,
+  );
   return data;
 }
 
 export async function getProductById(id: string) {
-  const { data } = await apiClient.get<{ data: Product }>(`/api/products/${id}`);
+  const { data } = await apiClient.get<{ data: Product }>(
+    `/api/products/${id}`,
+  );
   return data;
 }
 

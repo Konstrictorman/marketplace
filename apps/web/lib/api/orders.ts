@@ -1,7 +1,12 @@
 import { apiClient } from "@/lib/api/client";
 import type { PaginationMeta } from "@/lib/api/products";
 
-export type OrderStatus = "pending" | "cancelled" | "paid" | "shipped" | "delivered";
+export type OrderStatus =
+  | "pending"
+  | "cancelled"
+  | "paid"
+  | "shipped"
+  | "delivered";
 
 export type OrderItem = {
   id: string;
@@ -71,22 +76,31 @@ export type DeleteOrderItemBody = {
 };
 
 export async function listOrders(query: ListOrdersQuery = {}) {
-  const { data } = await apiClient.get<{ data: OrderSummary[]; meta: PaginationMeta }>(
-    "/api/orders",
-    { params: query },
-  );
+  const { data } = await apiClient.get<{
+    data: OrderSummary[];
+    meta: PaginationMeta;
+  }>("/api/orders", { params: query });
   return data;
 }
 
 export async function createOrder(body: CreateOrderBody) {
-  const { data } = await apiClient.post<{ data: OrderDetail }>("/api/orders", body);
+  const { data } = await apiClient.post<{ data: OrderDetail }>(
+    "/api/orders",
+    body,
+  );
   return data;
 }
 
-export async function getOrderById(orderId: string, query: OptionalBuyerQuery = {}) {
-  const { data } = await apiClient.get<{ data: OrderDetail }>(`/api/orders/${orderId}`, {
-    params: query,
-  });
+export async function getOrderById(
+  orderId: string,
+  query: OptionalBuyerQuery = {},
+) {
+  const { data } = await apiClient.get<{ data: OrderDetail }>(
+    `/api/orders/${orderId}`,
+    {
+      params: query,
+    },
+  );
   return data;
 }
 
@@ -150,5 +164,7 @@ export async function deleteOrderItem(
   itemId: string,
   body: DeleteOrderItemBody = {},
 ) {
-  await apiClient.delete(`/api/orders/${orderId}/items/${itemId}`, { data: body });
+  await apiClient.delete(`/api/orders/${orderId}/items/${itemId}`, {
+    data: body,
+  });
 }

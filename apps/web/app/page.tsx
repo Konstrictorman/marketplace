@@ -5,7 +5,8 @@ import Image from "next/image";
 const product = {
   name: "Product Name",
   price: 29.99,
-  description: "This is a detailed description of the product. It explains what the product does, its key features, materials, and anything else the buyer should know before purchasing.",
+  description:
+    "This is a detailed description of the product. It explains what the product does, its key features, materials, and anything else the buyer should know before purchasing.",
   stock: 8,
   rating: 4.5,
   condition: "new" as "new" | "used",
@@ -31,7 +32,7 @@ export default function Home() {
             Work in progress...
           </p>
         </div>
-        <ProductCard  product={product}/>
+        <ProductCard product={product} />
       </main>
     </div>
   );

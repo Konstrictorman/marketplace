@@ -64,10 +64,10 @@ export async function createConversation(body: CreateConversationBody) {
 }
 
 export async function listConversations(query: ListConversationsQuery) {
-  const { data } = await apiClient.get<{ data: Conversation[]; meta: PaginationMeta }>(
-    "/api/conversations",
-    { params: query },
-  );
+  const { data } = await apiClient.get<{
+    data: Conversation[];
+    meta: PaginationMeta;
+  }>("/api/conversations", { params: query });
   return data;
 }
 
@@ -82,7 +82,10 @@ export async function getConversationById(
   return data;
 }
 
-export async function deleteConversation(id: string, body: DeleteConversationBody) {
+export async function deleteConversation(
+  id: string,
+  body: DeleteConversationBody,
+) {
   await apiClient.delete(`/api/conversations/${id}`, { data: body });
 }
 
@@ -90,10 +93,9 @@ export async function listConversationParticipants(
   conversationId: string,
   query: ListParticipantsQuery = {},
 ) {
-  const { data } = await apiClient.get<{ data: ConversationParticipantDetail[] }>(
-    `/api/conversations/${conversationId}/participants`,
-    { params: query },
-  );
+  const { data } = await apiClient.get<{
+    data: ConversationParticipantDetail[];
+  }>(`/api/conversations/${conversationId}/participants`, { params: query });
   return data;
 }
 
@@ -101,10 +103,9 @@ export async function addConversationParticipant(
   conversationId: string,
   body: AddParticipantBody,
 ) {
-  const { data } = await apiClient.post<{ data: ConversationParticipantDetail }>(
-    `/api/conversations/${conversationId}/participants`,
-    body,
-  );
+  const { data } = await apiClient.post<{
+    data: ConversationParticipantDetail;
+  }>(`/api/conversations/${conversationId}/participants`, body);
   return data;
 }
 

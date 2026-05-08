@@ -5,7 +5,9 @@ const PLACEHOLDER_IMAGE =
   "https://placehold.co/280x180/1837A0/FEFEFE?text=Product";
 
 /** Maps catalog list rows into the shape expected by {@link ProductCard}. */
-export function mapProductListItemToCardProduct(p: ProductListItem): productType {
+export function mapProductListItemToCardProduct(
+  p: ProductListItem,
+): productType {
   const priceNum = Number.parseFloat(p.price);
   const condition: productType["condition"] =
     p.condition === "refurbished" ? "used" : p.condition;

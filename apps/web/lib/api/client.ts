@@ -20,7 +20,9 @@ export const apiClient = axios.create({
 
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<{ message?: string; error?: string; details?: unknown }>) => {
+  (
+    error: AxiosError<{ message?: string; error?: string; details?: unknown }>,
+  ) => {
     const apiError: ApiError = {
       status: error.response?.status ?? 500,
       message:

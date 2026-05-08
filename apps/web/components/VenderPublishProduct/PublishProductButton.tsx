@@ -41,9 +41,15 @@ const publishProductSchema = z.object({
   price: z
     .string()
     .trim()
-    .regex(moneyPattern, "Usa un precio con hasta dos decimales (ej. 120000 o 39.99)"),
+    .regex(
+      moneyPattern,
+      "Usa un precio con hasta dos decimales (ej. 120000 o 39.99)",
+    ),
   condition: z.enum(["new", "used", "refurbished"]),
-  inventory: z.coerce.number().int("Debe ser un entero").min(0, "El inventario no puede ser negativo"),
+  inventory: z.coerce
+    .number()
+    .int("Debe ser un entero")
+    .min(0, "El inventario no puede ser negativo"),
   status: z.enum(["active", "inactive"]),
 });
 
@@ -110,7 +116,11 @@ function PublishProductFormModal({
   });
 
   return (
-    <Modal open={open} onClose={closeModal} aria-labelledby="publish-product-title">
+    <Modal
+      open={open}
+      onClose={closeModal}
+      aria-labelledby="publish-product-title"
+    >
       <Box
         component="form"
         onSubmit={onSubmit}
@@ -228,7 +238,11 @@ function PublishProductFormModal({
               name="status"
               control={control}
               render={({ field }) => (
-                <Select {...field} labelId="status-label" label="Estado de publicación">
+                <Select
+                  {...field}
+                  labelId="status-label"
+                  label="Estado de publicación"
+                >
                   <MenuItem value="active">Activo</MenuItem>
                   <MenuItem value="inactive">Inactivo</MenuItem>
                 </Select>
@@ -245,7 +259,9 @@ function PublishProductFormModal({
             </Typography>
           ) : null}
 
-          <Box sx={{ display: "flex", gap: 1, justifyContent: "flex-end", mt: 1 }}>
+          <Box
+            sx={{ display: "flex", gap: 1, justifyContent: "flex-end", mt: 1 }}
+          >
             <Button
               type="button"
               variant="outlined"
