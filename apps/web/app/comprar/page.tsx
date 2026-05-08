@@ -64,7 +64,7 @@ export default function Shop() {
   return (
     <Box sx={{
       p: 4,
-      backgroundColor: 'rgb(179, 179, 179)',
+      backgroundColor: 'rgb(255, 255, 255)',
       flex: 1,
     }}>
       <Grid container spacing={3} sx={{ justifyContent: "flex-start"}}>
