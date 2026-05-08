@@ -5,18 +5,7 @@ import {
   Typography, Button, Rating, Box
 } from "@mui/material";
 import ProductDetailModal from "@/components/ProductDetailModal/ProductDetailModal";
-
-type ProductCardProps = {
-  product:{
-    name: string;
-    price: number;
-    description: string;
-    stock: number;
-    rating: number;
-    condition: "new" | "used";
-    image: string;
-  }
-}
+import { ProductCardProps } from "./ProductCard.types";
 
 const ProductCard = ({ product }: ProductCardProps) => {
   const [open, setOpen] = useState(false);

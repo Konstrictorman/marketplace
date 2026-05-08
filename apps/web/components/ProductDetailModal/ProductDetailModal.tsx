@@ -3,19 +3,12 @@ import {
   Typography, Box, Modal, Button,
   Chip, Divider, Rating
 } from "@mui/material";
+import { productType } from "../ProductCard/ProductCard.types";
 
 type ProductDetailModalProps = {
   open: boolean;
   onClose: () => void;
-  product: {
-    name: string;
-    price: number;
-    description: string;
-    stock: number;
-    rating: number;
-    condition: "new" | "used";
-    image: string;
-  };
+  product: productType
 }
 
 const ProductDetailModal =({ open, onClose, product}: ProductDetailModalProps) => {
