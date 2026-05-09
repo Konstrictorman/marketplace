@@ -6,6 +6,9 @@ import healthRoutes from "./health.routes.js";
 import ordersRoutes from "./orders.routes.js";
 import productImagesRoutes from "./product-images.routes.js";
 import productsRoutes from "./products.routes.js";
+import rolesRoutes from "./roles.routes.js";
+import userRolesRoutes from "./user-roles.routes.js";
+import usersRoutes from "./users.routes.js";
 
 /**
  * Feature routers composed here; mounted at `/api` in `app.ts` (e.g. `GET /api/health`).
@@ -20,3 +23,6 @@ rootRouter.use(conversationParticipantsRoutes);
 rootRouter.use(conversationsRoutes);
 rootRouter.use(productImagesRoutes);
 rootRouter.use(productsRoutes);
+rootRouter.use(rolesRoutes);
+rootRouter.use(userRolesRoutes);
+rootRouter.use(usersRoutes);
