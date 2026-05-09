@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import Image from "next/image";
 import "./globals.css";
 import NavBar from "@/components/NavBar/NavBar";
+import { CartProvider } from "@/context/CartContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -49,15 +50,15 @@ export default function RootLayout({
           />
         </header>
 
-        {/* Nav */}
-        <NavBar />
 
-        {/* Main */}
-        <main className="flex-1 flex flex-col" style={{
-          backgroundColor: 'rgb(239, 241, 244)',
-        }}>
-          {children}
+        <CartProvider>
+          <NavBar />
+          <main className="flex-1 flex flex-col" style={{
+            backgroundColor: 'rgb(239, 241, 244)',
+          }}>
+        {children}
         </main>
+        </CartProvider>
 
         {/* Footer */}
         <footer style={{
