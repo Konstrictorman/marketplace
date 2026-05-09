@@ -51,14 +51,16 @@ export default function RootLayout({
           />
         </header>
 
-
         <CartProvider>
           <NavBar />
-          <main className="flex-1 flex flex-col" style={{
-            backgroundColor: 'rgb(239, 241, 244)',
-          }}>
-        {children}
-        </main>
+          <main
+            className="flex-1 flex flex-col"
+            style={{
+              backgroundColor: "rgb(239, 241, 244)",
+            }}
+          >
+            {children}
+          </main>
         </CartProvider>
 
         {/* Footer */}

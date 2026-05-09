@@ -37,7 +37,7 @@ const ProductDetailModal = ({
     if (amount > 1) setAmount(amount - 1);
   };
 
-  const {addToCart} = useCart();
+  const { addToCart } = useCart();
 
   return (
     <Modal open={open} onClose={onClose}>
