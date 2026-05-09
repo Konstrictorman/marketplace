@@ -12,7 +12,8 @@ import {
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
-import { productType } from "../ProductCard/ProductCard.types";
+import { productType } from "@/app/types/types";
+import { useCart } from "@/context/CartContext";
 
 type ProductDetailModalProps = {
   open: boolean;
@@ -35,6 +36,8 @@ const ProductDetailModal = ({
   const decrease = () => {
     if (amount > 1) setAmount(amount - 1);
   };
+
+  const {addToCart} = useCart();
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -216,6 +219,10 @@ const ProductDetailModal = ({
             variant="contained"
             fullWidth
             disabled={!inStock}
+            onClick={() => {
+              addToCart(product, amount);
+              onClose();
+            }}
             sx={{
               borderRadius: "10px",
               py: 1.2,
