@@ -57,7 +57,7 @@ export default function CartPage() {
         <Button
           variant="contained"
           component={Link}
-          href="/comprar"
+          href="/shop"
           sx={{
             mt: 1,
             borderRadius: "10px",
@@ -331,7 +331,7 @@ export default function CartPage() {
           variant="outlined"
           fullWidth
           component={Link}
-          href="/comprar"
+          href="/shop"
           sx={{
             borderRadius: "10px",
             py: 1.2,

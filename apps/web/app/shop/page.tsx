@@ -1,7 +1,6 @@
 "use client";
 import { Box, Grid } from "@mui/material";
 import ProductCard from "@/components/ProductCard/ProductCard";
-
 const products = [
   {
     id: "1",
