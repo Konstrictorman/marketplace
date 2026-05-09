@@ -226,7 +226,7 @@ function PublishProductFormModal({
             label="Inventario"
             type="number"
             fullWidth
-            inputProps={{ min: 0, step: 1 }}
+            slotProps={{ htmlInput: { min: 0, step: 1 } }}
             {...register("inventory")}
             error={Boolean(errors.inventory)}
             helperText={errors.inventory?.message}

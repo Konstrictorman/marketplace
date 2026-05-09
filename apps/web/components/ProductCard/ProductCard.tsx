@@ -11,7 +11,11 @@ import {
   Box,
 } from "@mui/material";
 import ProductDetailModal from "@/components/ProductDetailModal/ProductDetailModal";
-import { ProductCardProps } from "./ProductCard.types";
+import { productType } from "@/types/types";
+
+type ProductCardProps = {
+  product: productType;
+};
 
 const ProductCard = ({ product }: ProductCardProps) => {
   const [open, setOpen] = useState(false);

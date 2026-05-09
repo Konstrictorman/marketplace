@@ -31,16 +31,17 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-
         {/* Header */}
-        <header style={{
-          minHeight: '64px',
-          display: 'flex',
-          alignItems: 'center',
-          paddingLeft: '24px',
-          paddingRight: '24px',
-          backgroundColor: 'rgb(0, 28, 100)',
-        }}>
+        <header
+          style={{
+            minHeight: "64px",
+            display: "flex",
+            alignItems: "center",
+            paddingLeft: "24px",
+            paddingRight: "24px",
+            backgroundColor: "rgb(0, 28, 100)",
+          }}
+        >
           <Image
             src="/images/unisabana-logo.png"
             alt="Unisabana logo"
@@ -50,30 +51,33 @@ export default function RootLayout({
           />
         </header>
 
-
         <CartProvider>
           <NavBar />
-          <main className="flex-1 flex flex-col" style={{
-            backgroundColor: 'rgb(239, 241, 244)',
-          }}>
-        {children}
-        </main>
+          <main
+            className="flex-1 flex flex-col"
+            style={{
+              backgroundColor: "rgb(239, 241, 244)",
+            }}
+          >
+            {children}
+          </main>
         </CartProvider>
 
         {/* Footer */}
-        <footer style={{
-          minHeight: '64px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingLeft: '24px',
-          paddingRight: '24px',
-          backgroundColor: 'rgb(0, 28, 100)',
-          color: 'rgb(189, 197, 217)',
-        }}>
+        <footer
+          style={{
+            minHeight: "64px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            paddingLeft: "24px",
+            paddingRight: "24px",
+            backgroundColor: "rgb(0, 28, 100)",
+            color: "rgb(189, 197, 217)",
+          }}
+        >
           <span>© Sabana Marketplace</span>
         </footer>
-
       </body>
     </html>
   );

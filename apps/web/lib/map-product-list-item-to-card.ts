@@ -1,5 +1,5 @@
 import type { ProductListItem } from "@/lib/api/products";
-import type { productType } from "@/components/ProductCard/ProductCard.types";
+import type { productType } from "@/types/types";
 
 const PLACEHOLDER_IMAGE =
   "https://placehold.co/280x180/1837A0/FEFEFE?text=Product";
@@ -13,6 +13,7 @@ export function mapProductListItemToCardProduct(
     p.condition === "refurbished" ? "used" : p.condition;
 
   return {
+    id: p.id,
     name: p.title,
     price: Number.isFinite(priceNum) ? priceNum : 0,
     description: [
