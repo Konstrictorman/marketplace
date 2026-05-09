@@ -1,23 +1,8 @@
 "use client";
-import { createContext, useContext, useState, ReactNode } from "react";
-import { productType } from "@/components/ProductCard/ProductCard.types";
+import { createContext, useContext, useState, ReactNode, useMemo } from "react";
+import { CartItem, productType } from "@/app/types/types";
+import { CartContextType } from "@/app/types/types";
 
-type CartItem = {
-  product: productType;
-  amount: number;
-  selected: boolean;
-};
-
-type CartContextType = {
-  items: CartItem[];
-  addToCart: (product: productType, amount: number) => void;
-  removeFromCart: (productId: number) => void;
-  updateAmount: (productId: number, amount: number) => void;
-  toggleSelected: (productId: number) => void;
-  toggleSelectAll: () => void;
-  clearCart: () => void;
-  totalItems: number;
-};
 
 const CartContext = createContext<CartContextType | null>(null);
 
@@ -70,22 +55,23 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
   const totalItems = items.reduce((sum, item) => sum + item.amount, 0);
 
+  const value = useMemo(() => ({
+    items,
+    addToCart,
+    removeFromCart,
+    updateAmount,
+    toggleSelected,
+    toggleSelectAll,
+    clearCart,
+    totalItems,
+  }), [items, totalItems]);
+  
   return (
-    <CartContext.Provider value={{
-      items,
-      addToCart,
-      removeFromCart,
-      updateAmount,
-      toggleSelected,
-      toggleSelectAll,
-      clearCart,
-      totalItems,
-    }}>
+    <CartContext.Provider value={value}>
       {children}
     </CartContext.Provider>
   );
-};
-
+}
 export const useCart = () => {
   const context = useContext(CartContext);
   if (!context) throw new Error("useCart must be used within a CartProvider");
