@@ -1,5 +1,5 @@
 import type { ProductListItem } from "@/lib/api/products";
-import type { productType } from "@/app/types/types";
+import type { productType } from "@/types/types";
 
 const PLACEHOLDER_IMAGE =
   "https://placehold.co/280x180/1837A0/FEFEFE?text=Product";

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import ProductCard from "@/components/ProductCard/ProductCard";
-import { PublishProductButton } from "@/components/VenderPublishProduct/PublishProductButton";
+import { PublishProductButton } from "@/components/PublishProductButton/PublishProductButton";
 import type { ApiError } from "@/lib/api/client";
 import { listProducts, type ProductListItem } from "@/lib/api/products";
 import { mapProductListItemToCardProduct } from "@/lib/map-product-list-item-to-card";

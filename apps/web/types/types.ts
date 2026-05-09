@@ -1,5 +1,6 @@
 export type productType = {
-  id: number;
+  /** Catalog UUID from API, or a stable string id for mock data. */
+  id: string;
   name: string;
   price: number;
   description: string;
@@ -7,10 +8,6 @@ export type productType = {
   rating: number;
   condition: "new" | "used";
   image: string;
-};
-
-export type ProductCardProps = {
-  product: productType;
 };
 
 export type CartItem = {
@@ -22,9 +19,9 @@ export type CartItem = {
 export type CartContextType = {
   items: CartItem[];
   addToCart: (product: productType, amount: number) => void;
-  removeFromCart: (productId: number) => void;
-  updateAmount: (productId: number, amount: number) => void;
-  toggleSelected: (productId: number) => void;
+  removeFromCart: (productId: string) => void;
+  updateAmount: (productId: string, amount: number) => void;
+  toggleSelected: (productId: string) => void;
   toggleSelectAll: () => void;
   clearCart: () => void;
   totalItems: number;

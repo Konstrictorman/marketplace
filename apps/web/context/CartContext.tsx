@@ -7,7 +7,7 @@ import {
   useMemo,
   useCallback,
 } from "react";
-import { CartItem, productType, CartContextType } from "@/app/types/types";
+import { CartItem, productType, CartContextType } from "@/types/types";
 
 const CartContext = createContext<CartContextType | null>(null);
 
@@ -28,11 +28,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     });
   }, []);
 
-  const removeFromCart = useCallback((productId: number) => {
+  const removeFromCart = useCallback((productId: string) => {
     setItems((prev) => prev.filter((item) => item.product.id !== productId));
   }, []);
 
-  const updateAmount = useCallback((productId: number, amount: number) => {
+  const updateAmount = useCallback((productId: string, amount: number) => {
     setItems((prev) =>
       prev.map((item) =>
         item.product.id === productId ? { ...item, amount } : item,
@@ -40,7 +40,7 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
     );
   }, []);
 
-  const toggleSelected = useCallback((productId: number) => {
+  const toggleSelected = useCallback((productId: string) => {
     setItems((prev) =>
       prev.map((item) =>
         item.product.id === productId
