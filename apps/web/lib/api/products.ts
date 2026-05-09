@@ -11,7 +11,7 @@ export type ProductCondition = "new" | "used" | "refurbished";
 export type ProductStatus = "active" | "inactive" | "removed";
 
 export type ProductListItem = {
-  id: string;
+  id: number;
   sellerId: string;
   categoryId: string;
   title: string;
