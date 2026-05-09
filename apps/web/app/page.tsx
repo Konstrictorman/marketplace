@@ -43,7 +43,7 @@ export default function Home() {
         <Button
           variant="contained"
           size="large"
-          href="/comprar"
+          href="/shop"
           sx={{
             px: 5,
             py: 1.5,

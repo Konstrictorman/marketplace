@@ -28,7 +28,7 @@ export default function NavBar() {
         Home
       </Link>
       <Link
-        href="/Login"
+        href="/login"
         style={{
           color: "rgb(254, 254, 254)",
           textDecoration: "none",

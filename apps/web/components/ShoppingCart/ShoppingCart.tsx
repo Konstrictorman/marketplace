@@ -9,7 +9,7 @@ export default function ShoppingCart() {
   const pathname = usePathname();
   const { totalItems } = useCart();
 
-  if (pathname !== "/comprar") return null;
+  if (pathname !== "/shop") return null;
 
   return (
     <Link
