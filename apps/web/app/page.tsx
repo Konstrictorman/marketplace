@@ -1,39 +1,77 @@
 "use client";
-import ProductCard from "@/components/ProductCard/ProductCard";
-import Image from "next/image";
-
-const product = {
-  name: "Product Name",
-  price: 29.99,
-  description:
-    "This is a detailed description of the product. It explains what the product does, its key features, materials, and anything else the buyer should know before purchasing.",
-  stock: 8,
-  rating: 4.5,
-  condition: "new" as "new" | "used",
-  image: "https://placehold.co/280x180/1837A0/FEFEFE?text=Product",
-};
+import { Button, Box, Typography } from "@mui/material";
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          src="/images/unisabana-logo.png"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            Welcome to the Sabana&apos;s Marketplace
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Work in progress...
-          </p>
-        </div>
-        <ProductCard product={product} />
-      </main>
-    </div>
+    <Box sx={{
+      flex: 1,
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 3,
+      backgroundColor: 'rgb(239, 241, 244)',
+      py: 8,
+    }}>
+
+      {/* Title */}
+      <Typography variant="h3" sx={{
+        fontWeight: 'bold',
+        color: 'rgb(0, 28, 100)',
+        textAlign: 'center',
+      }}>
+        Welcome to Sabana Marketplace
+      </Typography>
+
+      <Typography variant="body1" sx={{
+        color: 'rgb(76, 98, 153)',
+        textAlign: 'center',
+        maxWidth: 400,
+      }}>
+        ¿Qué quieres hacer hoy?
+      </Typography>
+
+      {/* Buttons */}
+      <Box sx={{ display: 'flex', gap: 3, mt: 2 }}>
+        <Button
+          variant="contained"
+          size="large"
+          href="/comprar"
+          sx={{
+            px: 5,
+            py: 1.5,
+            borderRadius: '12px',
+            fontSize: '1.1rem',
+            fontWeight: 'bold',
+            backgroundColor: 'rgb(24, 62, 157)',
+            '&:hover': { backgroundColor: 'rgb(29, 54, 120)' }
+          }}
+        >
+          Comprar
+        </Button>
+
+        <Button
+          variant="outlined"
+          size="large"
+          href="/vender"
+          sx={{
+            px: 5,
+            py: 1.5,
+            borderRadius: '12px',
+            fontSize: '1.1rem',
+            fontWeight: 'bold',
+            borderColor: 'rgb(24, 62, 157)',
+            color: 'rgb(24, 62, 157)',
+            '&:hover': {
+              borderColor: 'rgb(29, 54, 120)',
+              backgroundColor: 'rgba(24, 62, 157, 0.05)',
+            }
+          }}
+        >
+          Vender
+        </Button>
+      </Box>
+
+    </Box>
   );
 }

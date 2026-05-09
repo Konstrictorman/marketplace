@@ -79,7 +79,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
           </Box>
         </CardContent>
 
-        {/* Two buttons side by side */}
+        {/* One button */}
         <CardActions sx={{ px: 2, pb: 2, gap: 1 }}>
           <Button
             variant="outlined"
@@ -97,19 +97,6 @@ const ProductCard = ({ product }: ProductCardProps) => {
             }}
           >
             Details
-          </Button>
-
-          <Button
-            variant="contained"
-            size="small"
-            fullWidth
-            sx={{
-              borderRadius: "10px",
-              backgroundColor: "rgb(24, 62, 157)",
-              "&:hover": { backgroundColor: "rgb(29, 54, 120)" },
-            }}
-          >
-            Add to Cart
           </Button>
         </CardActions>
       </Card>

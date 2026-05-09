@@ -1,13 +1,11 @@
 "use client";
+import { useState } from "react";
 import {
-  Typography,
-  Box,
-  Modal,
-  Button,
-  Chip,
-  Divider,
-  Rating,
+  Typography, Box, Modal, Button,
+  Chip, Divider, Rating, IconButton
 } from "@mui/material";
+import AddIcon from "@mui/icons-material/Add";
+import RemoveIcon from "@mui/icons-material/Remove";
 import { productType } from "../ProductCard/ProductCard.types";
 
 type ProductDetailModalProps = {
@@ -16,12 +14,17 @@ type ProductDetailModalProps = {
   product: productType;
 };
 
-const ProductDetailModal = ({
-  open,
-  onClose,
-  product,
-}: ProductDetailModalProps) => {
+const ProductDetailModal = ({ open, onClose, product }: ProductDetailModalProps) => {
   const inStock = product.stock > 0;
+  const [amount, setAmount] = useState(1);
+
+  const increase = () => {
+    if (amount < product.stock) setAmount(amount + 1);
+  };
+
+  const decrease = () => {
+    if (amount > 1) setAmount(amount - 1);
+  };
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -128,6 +131,51 @@ const ProductDetailModal = ({
           />
         </Box>
 
+        {/* Amount selector */}
+        {inStock && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+            <Typography variant="body2" sx={{ fontWeight: 'bold', color: 'rgb(0, 28, 100)' }}>
+              Amount:
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <IconButton
+                onClick={decrease}
+                disabled={amount <= 1}
+                size="small"
+                sx={{
+                  border: '1px solid rgb(24, 62, 157)',
+                  color: 'rgb(24, 62, 157)',
+                  '&:disabled': { borderColor: 'rgb(189, 197, 217)' }
+                }}
+              >
+                <RemoveIcon fontSize="small" />
+              </IconButton>
+
+              <Typography variant="body1" sx={{
+                minWidth: '32px',
+                textAlign: 'center',
+                fontWeight: 'bold',
+                color: 'rgb(0, 28, 100)',
+              }}>
+                {amount}
+              </Typography>
+
+              <IconButton
+                onClick={increase}
+                disabled={amount >= product.stock}
+                size="small"
+                sx={{
+                  border: '1px solid rgb(24, 62, 157)',
+                  color: 'rgb(24, 62, 157)',
+                  '&:disabled': { borderColor: 'rgb(189, 197, 217)' }
+                }}
+              >
+                <AddIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          </Box>
+        )}
+
         {/* Buttons */}
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button
@@ -151,11 +199,12 @@ const ProductDetailModal = ({
           <Button
             variant="contained"
             fullWidth
+            disabled={!inStock}
             sx={{
-              borderRadius: "10px",
+              borderRadius: '10px',
               py: 1.2,
-              backgroundColor: "rgb(24, 62, 157)",
-              "&:hover": { backgroundColor: "rgb(29, 54, 120)" },
+              backgroundColor: 'rgb(24, 62, 157)',
+              '&:hover': { backgroundColor: 'rgb(29, 54, 120)' }
             }}
           >
             Add to Cart
