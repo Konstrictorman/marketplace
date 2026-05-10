@@ -52,6 +52,9 @@ const ProductCard = ({ product }: ProductCardProps) => {
               fontWeight: "bold",
               color: "rgb(0, 28, 100)",
               marginBottom: 0.5,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
             }}
           >
             {product.name}
@@ -91,6 +94,7 @@ const ProductCard = ({ product }: ProductCardProps) => {
             fullWidth
             onClick={() => setOpen(true)}
             sx={{
+              textTransform: "none",
               borderRadius: "10px",
               borderColor: "rgb(24, 62, 157)",
               color: "rgb(24, 62, 157)",

@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Button } from "@mui/material";
 import ProductCard from "@/components/ProductCard/ProductCard";
 import { PublishProductButton } from "@/components/PublishProductButton/PublishProductButton";
 import type { ApiError } from "@/lib/api/client";
@@ -97,12 +97,14 @@ export default async function VenderPage({
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <PublishProductButton sellerId={sellerId} />
           {sellerIdFromQuery ? (
-            <Link
-              href="/vender"
+            <Button
+              sx={{ textTransform: "none" }}
+              type="button"
+              onClick={() => (window.location.href = "/vender")}
               className="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               Reset to dev default
-            </Link>
+            </Button>
           ) : null}
         </div>
       </header>
@@ -150,7 +152,8 @@ export default async function VenderPage({
                 </span>
               </p>
               <div className="flex gap-2">
-                <Link
+                <Button
+                  sx={{ textTransform: "none" }}
                   href={buildHref(Math.max(1, meta.page - 1))}
                   aria-disabled={meta.page <= 1}
                   className={`rounded-lg border px-3 py-2 font-medium ${
@@ -160,8 +163,9 @@ export default async function VenderPage({
                   }`}
                 >
                   Previous
-                </Link>
-                <Link
+                </Button>
+                <Button
+                  sx={{ textTransform: "none" }}
                   href={buildHref(Math.min(meta.totalPages, meta.page + 1))}
                   aria-disabled={meta.page >= meta.totalPages}
                   className={`rounded-lg border px-3 py-2 font-medium ${
@@ -171,7 +175,7 @@ export default async function VenderPage({
                   }`}
                 >
                   Next
-                </Link>
+                </Button>
               </div>
             </nav>
           )}

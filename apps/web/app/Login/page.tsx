@@ -199,6 +199,7 @@ const RegisterModal = ({
             fullWidth
             onClick={onClose}
             sx={{
+              textTransform: "none",
               borderRadius: "10px",
               borderColor: "rgb(24, 62, 157)",
               color: "rgb(24, 62, 157)",
@@ -215,6 +216,7 @@ const RegisterModal = ({
             fullWidth
             onClick={handleSubmit}
             sx={{
+              textTransform: "none",
               borderRadius: "10px",
               backgroundColor: "rgb(24, 62, 157)",
               "&:hover": { backgroundColor: "rgb(29, 54, 120)" },

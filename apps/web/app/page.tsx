@@ -45,6 +45,7 @@ export default function Home() {
           size="large"
           href="/shop"
           sx={{
+            textTransform: "none",
             px: 5,
             py: 1.5,
             borderRadius: "12px",
@@ -62,6 +63,7 @@ export default function Home() {
           size="large"
           href="/vender"
           sx={{
+            textTransform: "none",
             px: 5,
             py: 1.5,
             borderRadius: "12px",
