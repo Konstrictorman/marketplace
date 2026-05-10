@@ -17,6 +17,8 @@ import {
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { useRouter } from "next/navigation";
+import { login } from "@/lib/api/auth";
+import { isApiError } from "@/lib/api/client";
 
 const CAREERS = [
   "Administración de Empresas",
@@ -228,17 +230,21 @@ const RegisterModal = ({
   );
 };
 
+function buildInstitutionalEmail(localOrFull: string): string {
+  const trimmed = localOrFull.trim().toLowerCase();
+  if (trimmed.includes("@")) {
+    return trimmed;
+  }
+  return `${trimmed}@unisabana.edu.co`;
+}
+
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [registerOpen, setRegisterOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const FAKE_USERS = [
-    { username: "juan.perez", password: "password123" },
-    { username: "maria.garcia", password: "password123" },
-  ];
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const router = useRouter();
 
@@ -249,20 +255,38 @@ export default function LoginPage() {
     return newErrors;
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     const newErrors = validate();
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-    const user = FAKE_USERS.find(
-      (u) => u.username === username && u.password === password,
-    );
-    if (!user) {
-      setErrors({ password: "Invalid username or password" });
-      return;
+
+    const institutionalEmail = buildInstitutionalEmail(username);
+
+    setIsSubmitting(true);
+    setErrors({});
+    try {
+      await login({ institutionalEmail, password });
+
+      const params = new URLSearchParams(window.location.search);
+      const callbackUrl = params.get("callbackUrl");
+      const dest =
+        callbackUrl &&
+        callbackUrl.startsWith("/") &&
+        !callbackUrl.startsWith("//") &&
+        !callbackUrl.startsWith("/login")
+          ? callbackUrl
+          : "/";
+      router.replace(dest);
+    } catch (e: unknown) {
+      const message = isApiError(e)
+        ? e.message
+        : "Network error. Please try again.";
+      setErrors({ password: message });
+    } finally {
+      setIsSubmitting(false);
     }
-    router.push("/");
   };
 
   return (
@@ -295,17 +319,7 @@ export default function LoginPage() {
             textAlign: "center",
           }}
         >
-          Welcome back
-        </Typography>
-        <Typography
-          variant="body2"
-          sx={{
-            color: "rgb(131, 148, 189)",
-            textAlign: "center",
-            mb: 3,
-          }}
-        >
-          Sign in with your Unisabana credentials
+          Welcome
         </Typography>
 
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -317,9 +331,7 @@ export default function LoginPage() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             error={!!errors.username}
-            helperText={
-              errors.username || "@unisabana.edu.co will be added automatically"
-            }
+            helperText={errors.username}
             slotProps={{
               input: {
                 endAdornment: (
@@ -368,7 +380,9 @@ export default function LoginPage() {
           variant="contained"
           fullWidth
           onClick={handleLogin}
+          disabled={isSubmitting}
           sx={{
+            textTransform: "none",
             mt: 3,
             borderRadius: "10px",
             py: 1.2,
@@ -376,7 +390,7 @@ export default function LoginPage() {
             "&:hover": { backgroundColor: "rgb(29, 54, 120)" },
           }}
         >
-          Sign In
+          {isSubmitting ? "Signing in…" : "Sign In"}
         </Button>
 
         <Divider sx={{ my: 2, borderColor: "rgb(189, 197, 217)" }} />

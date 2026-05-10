@@ -1,4 +1,5 @@
 import { Router } from "express";
+import authRoutes from "./auth.routes.js";
 import conversationParticipantsRoutes from "./conversation-participants.routes.js";
 import conversationsRoutes from "./conversations.routes.js";
 import docsRoutes from "./docs.routes.js";
@@ -18,6 +19,7 @@ export const rootRouter = Router();
 /** Must stay under `/docs` — `swaggerUi.setup()` answers HTML for any request that reaches it. */
 rootRouter.use("/docs", docsRoutes);
 rootRouter.use(healthRoutes);
+rootRouter.use(authRoutes);
 rootRouter.use(ordersRoutes);
 rootRouter.use(conversationParticipantsRoutes);
 rootRouter.use(conversationsRoutes);

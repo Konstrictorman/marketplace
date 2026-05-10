@@ -1,9 +1,21 @@
 "use client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import ShoppingCart from "../ShoppingCart/ShoppingCart";
+import { logout } from "@/lib/api/auth";
 
 export default function NavBar() {
+  const router = useRouter();
+
+  async function handleLogout() {
+    try {
+      await logout();
+    } finally {
+      router.push("/login");
+      router.refresh();
+    }
+  }
   return (
     <nav
       style={{
@@ -52,17 +64,23 @@ export default function NavBar() {
         }}
       />
 
-      <Link
-        href="/logout"
+      <button
+        type="button"
+        onClick={() => void handleLogout()}
         style={{
+          background: "none",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
           color: "rgb(189, 197, 217)",
           textDecoration: "none",
           fontWeight: "500",
           fontSize: "0.9rem",
+          fontFamily: "inherit",
         }}
       >
         Log out
-      </Link>
+      </button>
     </nav>
   );
 }

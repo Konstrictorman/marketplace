@@ -25,6 +25,11 @@ export const openApiDocument = {
     },
     { name: "Health", description: "Liveness & database connectivity" },
     {
+      name: "Authentication",
+      description:
+        "Password login and JWT session tokens. HS256 payload includes `sub`/`userId`, `username`, `roles`, `role` (see `POST /auth/login`).",
+    },
+    {
       name: "Products",
       description: "Product catalog CRUD & search",
     },
@@ -123,6 +128,65 @@ export const openApiDocument = {
                     "Full specification: `openapi`, `info`, `servers`, `tags`, `paths`, `components`.",
                   additionalProperties: true,
                 },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/auth/login": {
+      post: {
+        operationId: "login",
+        tags: ["Authentication"],
+        summary: "Login with institutional email and password",
+        description:
+          "Returns a **Bearer** JWT (`data.token`). Claims: `sub` (user UUID), `userId`, `username` (display name), `roles` (array of role names), `role` (first role name, or empty string), plus `iat` / `exp`. Configure `JWT_SECRET` (≥32 chars) and optional `JWT_EXPIRES_IN` (default `7d`) on the server.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/AuthLoginBody" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "JWT issued",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/AuthLoginResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "401": {
+            description: "`invalid_credentials`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "`user_inactive`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "503": {
+            description: "`auth_misconfigured` (e.g. missing `JWT_SECRET` in production)",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
               },
             },
           },
@@ -2231,7 +2295,7 @@ export const openApiDocument = {
               code: {
                 type: "string",
                 description:
-                  "Stable machine code. Examples: `validation_failed`, `not_found`, `route_not_found`, `forbidden`, `buyer_not_found`, `seller_not_found`, `category_not_found`, `product_not_found`, `product_removed`, `product_not_available`, `image_not_found`, `order_not_found`, `order_item_not_found`, `order_not_pending`, `insufficient_inventory`, `invalid_order_transition`, `cancelled_only_from_pending`, `conversation_not_found`, `participant_not_found`, `invalid_participants`, `min_participants_required`, `role_not_found`, `role_name_conflict`, `user_not_found`, `user_email_conflict`, `user_in_use`, `user_role_exists`, `user_role_not_found`, `database_unreachable`, … Prisma: `P2002`, `P2003`, `P2015`, `P2025` when surfaced. `database_unavailable`, `internal_error`.",
+                  "Stable machine code. Examples: `validation_failed`, `not_found`, `route_not_found`, `forbidden`, `invalid_credentials`, `user_inactive`, `auth_misconfigured`, `buyer_not_found`, `seller_not_found`, `category_not_found`, `product_not_found`, `product_removed`, `product_not_available`, `image_not_found`, `order_not_found`, `order_item_not_found`, `order_not_pending`, `insufficient_inventory`, `invalid_order_transition`, `cancelled_only_from_pending`, `conversation_not_found`, `participant_not_found`, `invalid_participants`, `min_participants_required`, `role_not_found`, `role_name_conflict`, `user_not_found`, `user_email_conflict`, `user_in_use`, `user_role_exists`, `user_role_not_found`, `database_unreachable`, … Prisma: `P2002`, `P2003`, `P2015`, `P2025` when surfaced. `database_unavailable`, `internal_error`.",
                 example: "validation_failed",
               },
               message: {
@@ -2254,6 +2318,40 @@ export const openApiDocument = {
           pageSize: { type: "integer" },
           total: { type: "integer" },
           totalPages: { type: "integer" },
+        },
+      },
+      AuthLoginBody: {
+        type: "object",
+        required: ["institutionalEmail", "password"],
+        properties: {
+          institutionalEmail: { type: "string", format: "email" },
+          password: { type: "string", minLength: 1, maxLength: 200 },
+        },
+      },
+      AuthLoginResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: {
+            type: "object",
+            required: ["token", "tokenType", "expiresIn"],
+            properties: {
+              token: {
+                type: "string",
+                description:
+                  "HS256 JWT. Payload includes `sub`, `userId`, `username`, `roles`, `role`, `iat`, `exp`.",
+              },
+              tokenType: {
+                type: "string",
+                enum: ["Bearer"],
+              },
+              expiresIn: {
+                type: "string",
+                description: "Lifetime hint (e.g. `7d`); matches server `JWT_EXPIRES_IN`.",
+                example: "7d",
+              },
+            },
+          },
         },
       },
       Role: {
