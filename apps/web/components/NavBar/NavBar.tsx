@@ -4,11 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Avatar } from "@mui/material";
 import ShoppingCart from "../ShoppingCart/ShoppingCart";
-import {
-  getAuthSession,
-  logout,
-  type AuthSessionData,
-} from "@/lib/api/auth";
+import { getAuthSession, logout, type AuthSessionData } from "@/lib/api/auth";
 
 export default function NavBar() {
   const router = useRouter();
@@ -67,25 +63,25 @@ export default function NavBar() {
 
       {/* Right side */}
       <ShoppingCart />
-
-      <Avatar
-        aria-label={
-          session?.authenticated
-            ? `Signed in (${session.initials})`
-            : "Not signed in"
-        }
-        sx={{
-          width: 32,
-          height: 32,
-          fontSize: "0.8125rem",
-          fontWeight: 600,
-          bgcolor: "rgb(189, 197, 217)",
-          color: "rgb(24, 62, 157)",
-        }}
-      >
-        {session?.authenticated ? session.initials : "?"}
-      </Avatar>
-
+      {session?.authenticated && (
+        <Avatar
+          aria-label={
+            session?.authenticated
+              ? `Signed in (${session.initials})`
+              : "Not signed in"
+          }
+          sx={{
+            width: 32,
+            height: 32,
+            fontSize: "0.8125rem",
+            fontWeight: 600,
+            bgcolor: "rgb(189, 197, 217)",
+            color: "rgb(24, 62, 157)",
+          }}
+        >
+          {session?.authenticated ? session.initials : "?"}
+        </Avatar>
+      )}
       <button
         type="button"
         onClick={() => void handleLogout()}
