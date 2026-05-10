@@ -8,7 +8,7 @@ export const openApiDocument = {
     title: "Marketplace API",
     version: "1.0.0",
     description:
-      "Express REST API (`apps/api`). **Swagger UI:** open `GET /docs` under the API base (e.g. `http://localhost:3001/api/docs`). **Raw spec:** `GET /docs/openapi.json`. JSON errors use `ApiErrorEnvelope` (`error.code`, `error.message`, optional `error.details`). **operationId** is stable for generated clients. Covers health, products & images, conversations & participants, orders, **roles**, **users**, and **user_roles** (nested under `/users/{userId}/roles`).",
+      "Express REST API (`apps/api`). **Swagger UI:** open `GET /docs` under the API base (e.g. `http://localhost:3001/api/docs`). **Raw spec:** `GET /docs/openapi.json`. JSON errors use `ApiErrorEnvelope` (`error.code`, `error.message`, optional `error.details`). **operationId** is stable for generated clients. Covers health, products & images, conversations & participants, orders, **roles**, **users**, **user_roles** (nested under `/users/{userId}/roles`), and **auth/login** (JWT issuance). **Browser HttpOnly sessions** are handled by the Next.js app (`apps/web`): it proxies `POST /auth/login` to this API, stores the JWT in cookie `mp_session`, and clears it via **`POST` or `GET` `/api/auth/logout` on the web origin** (not an Express route).",
   },
   servers: [
     {
@@ -24,6 +24,11 @@ export const openApiDocument = {
         "Machine-readable OpenAPI export (`openapi.json`). Interactive UI is served at `GET /docs` (HTML; not listed as a JSON path here).",
     },
     { name: "Health", description: "Liveness & database connectivity" },
+    {
+      name: "Authentication",
+      description:
+        "`POST /auth/login` issues an HS256 JWT (`data.token`, `data.expiresIn`). Claims include `sub`/`userId`, `username`, `institutionalEmail`, `roles`, `role`. **`GET /auth/login`** returns `405` with `Allow: POST` (avoids `route_not_found` for probes). **Next.js BFF** (`apps/web`): same credentials to the web app’s `POST /api/auth/login` set HttpOnly `mp_session`; end session with **`POST` or `GET`** `/api/auth/logout` on the **web** host (cookie clear + optional redirect to `/login`).",
+    },
     {
       name: "Products",
       description: "Product catalog CRUD & search",
@@ -123,6 +128,89 @@ export const openApiDocument = {
                     "Full specification: `openapi`, `info`, `servers`, `tags`, `paths`, `components`.",
                   additionalProperties: true,
                 },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/auth/login": {
+      get: {
+        operationId: "getAuthLoginMethodNotAllowed",
+        tags: ["Authentication"],
+        summary: "Login is POST only",
+        description:
+          "Express answers `GET` with `405` and `Allow: POST` so tools and browsers do not see `route_not_found`.",
+        responses: {
+          "405": {
+            description: "Use `POST` with JSON `AuthLoginBody`",
+            headers: {
+              Allow: {
+                description: "Allowed HTTP methods for this URL",
+                schema: { type: "string", example: "POST" },
+              },
+            },
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        operationId: "login",
+        tags: ["Authentication"],
+        summary: "Login with institutional email and password",
+        description:
+          "Returns a **Bearer** JWT in `data.token` and lifetime hint in `data.expiresIn`. Claims: `sub` (user UUID), `userId`, `username` (display name), `institutionalEmail`, `roles` (array of role names), `role` (first role name, or empty string), plus `iat` / `exp`. Configure `JWT_SECRET` (≥32 chars) and optional `JWT_EXPIRES_IN` (default `7d`) on the server. **Next.js BFF:** the marketplace web app proxies this route; the browser receives `{ data: { ok: true } }` and an HttpOnly `mp_session` cookie. **Logout** for that flow is **`POST` or `GET` `/api/auth/logout`** on the web app (this Express API has no logout endpoint).",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/AuthLoginBody" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "JWT issued",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/AuthLoginResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "401": {
+            description: "`invalid_credentials`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "`user_inactive`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "503": {
+            description:
+              "`auth_misconfigured` (e.g. missing `JWT_SECRET` in production)",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
               },
             },
           },
@@ -2231,7 +2319,7 @@ export const openApiDocument = {
               code: {
                 type: "string",
                 description:
-                  "Stable machine code. Examples: `validation_failed`, `not_found`, `route_not_found`, `forbidden`, `buyer_not_found`, `seller_not_found`, `category_not_found`, `product_not_found`, `product_removed`, `product_not_available`, `image_not_found`, `order_not_found`, `order_item_not_found`, `order_not_pending`, `insufficient_inventory`, `invalid_order_transition`, `cancelled_only_from_pending`, `conversation_not_found`, `participant_not_found`, `invalid_participants`, `min_participants_required`, `role_not_found`, `role_name_conflict`, `user_not_found`, `user_email_conflict`, `user_in_use`, `user_role_exists`, `user_role_not_found`, `database_unreachable`, … Prisma: `P2002`, `P2003`, `P2015`, `P2025` when surfaced. `database_unavailable`, `internal_error`.",
+                  "Stable machine code. Examples: `validation_failed`, `not_found`, `route_not_found`, `method_not_allowed`, `forbidden`, `invalid_credentials`, `user_inactive`, `auth_misconfigured`, `buyer_not_found`, `seller_not_found`, `category_not_found`, `product_not_found`, `product_removed`, `product_not_available`, `image_not_found`, `order_not_found`, `order_item_not_found`, `order_not_pending`, `insufficient_inventory`, `invalid_order_transition`, `cancelled_only_from_pending`, `conversation_not_found`, `participant_not_found`, `invalid_participants`, `min_participants_required`, `role_not_found`, `role_name_conflict`, `user_not_found`, `user_email_conflict`, `user_in_use`, `user_role_exists`, `user_role_not_found`, `database_unreachable`, … Prisma: `P2002`, `P2003`, `P2015`, `P2025` when surfaced. `database_unavailable`, `internal_error`.",
                 example: "validation_failed",
               },
               message: {
@@ -2254,6 +2342,41 @@ export const openApiDocument = {
           pageSize: { type: "integer" },
           total: { type: "integer" },
           totalPages: { type: "integer" },
+        },
+      },
+      AuthLoginBody: {
+        type: "object",
+        required: ["institutionalEmail", "password"],
+        properties: {
+          institutionalEmail: { type: "string", format: "email" },
+          password: { type: "string", minLength: 1, maxLength: 200 },
+        },
+      },
+      AuthLoginResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: {
+            type: "object",
+            required: ["token", "tokenType", "expiresIn"],
+            properties: {
+              token: {
+                type: "string",
+                description:
+                  "HS256 JWT. Payload includes `sub`, `userId`, `username`, `institutionalEmail`, `roles`, `role`, `iat`, `exp`.",
+              },
+              tokenType: {
+                type: "string",
+                enum: ["Bearer"],
+              },
+              expiresIn: {
+                type: "string",
+                description:
+                  "Lifetime hint (e.g. `7d`); matches server `JWT_EXPIRES_IN`.",
+                example: "7d",
+              },
+            },
+          },
         },
       },
       Role: {

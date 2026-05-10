@@ -5,7 +5,7 @@ export const metadata: Metadata = {
   description: "Manage your published listings",
 };
 
-export default function VenderLayout({
+export default function SellLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return children;
