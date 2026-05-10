@@ -8,7 +8,7 @@ export const openApiDocument = {
     title: "Marketplace API",
     version: "1.0.0",
     description:
-      "Express REST API (`apps/api`). JSON errors share the `ApiErrorEnvelope` schema (`error.code` / `error.message` / optional `error.details`). Use **operationId** for generated clients.",
+      "Express REST API (`apps/api`). **Swagger UI:** open `GET /docs` under the API base (e.g. `http://localhost:3001/api/docs`). **Raw spec:** `GET /docs/openapi.json`. JSON errors use `ApiErrorEnvelope` (`error.code`, `error.message`, optional `error.details`). **operationId** is stable for generated clients. Covers health, products & images, conversations & participants, orders, **roles**, **users**, and **user_roles** (nested under `/users/{userId}/roles`).",
   },
   servers: [
     {
@@ -18,6 +18,11 @@ export const openApiDocument = {
     },
   ],
   tags: [
+    {
+      name: "Documentation",
+      description:
+        "Machine-readable OpenAPI export (`openapi.json`). Interactive UI is served at `GET /docs` (HTML; not listed as a JSON path here).",
+    },
     { name: "Health", description: "Liveness & database connectivity" },
     {
       name: "Products",
@@ -37,6 +42,20 @@ export const openApiDocument = {
       name: "Orders",
       description:
         "Orders and line items. **Interim identity:** `buyerId` is optional on all order and order-item routes (query or JSON body). When provided it must match the order’s buyer (`403` otherwise). Replace with JWT/session auth when available.",
+    },
+    {
+      name: "Roles",
+      description:
+        "Role catalog (`roles` table). User assignments: `GET|POST /users/{userId}/roles`, `DELETE /users/{userId}/roles/{roleId}`.",
+    },
+    {
+      name: "User roles",
+      description: "Join rows in `user_roles` (which roles a user has).",
+    },
+    {
+      name: "Users",
+      description:
+        "Institutional user accounts. Responses never include `password_hash`. `POST` / `PATCH` accept a plaintext `password`, which is stored with scrypt.",
     },
   ],
   paths: {
@@ -80,6 +99,30 @@ export const openApiDocument = {
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/docs/openapi.json": {
+      get: {
+        operationId: "getOpenApiDocument",
+        tags: ["Documentation"],
+        summary: "OpenAPI 3 document (JSON)",
+        description:
+          "Returns the same object Swagger UI loads. For tooling and codegen, not for production traffic shaping.",
+        responses: {
+          "200": {
+            description: "OpenAPI 3.0.3 document",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  description:
+                    "Full specification: `openapi`, `info`, `servers`, `tags`, `paths`, `components`.",
+                  additionalProperties: true,
+                },
               },
             },
           },
@@ -1615,6 +1658,563 @@ export const openApiDocument = {
         },
       },
     },
+    "/roles": {
+      get: {
+        operationId: "listRoles",
+        tags: ["Roles"],
+        summary: "List roles",
+        parameters: [
+          {
+            name: "page",
+            in: "query",
+            schema: { type: "integer", minimum: 1, default: 1 },
+          },
+          {
+            name: "pageSize",
+            in: "query",
+            schema: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+          },
+          {
+            name: "q",
+            in: "query",
+            description: "Case-insensitive substring match on `name`",
+            schema: { type: "string", minLength: 1, maxLength: 100 },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Paged list ordered by name",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/RoleListResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        operationId: "createRole",
+        tags: ["Roles"],
+        summary: "Create role",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/RoleCreateBody" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Created",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/RoleDetailResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "`role_name_conflict`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/roles/{roleId}": {
+      parameters: [
+        {
+          name: "roleId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "getRole",
+        tags: ["Roles"],
+        summary: "Get role by id",
+        responses: {
+          "200": {
+            description: "Role",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/RoleDetailResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Invalid id",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`role_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      patch: {
+        operationId: "updateRole",
+        tags: ["Roles"],
+        summary: "Update role",
+        description: "Partial update; at least one of `name`, `description`.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/RolePatchBody" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Updated role",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/RoleDetailResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`role_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "`role_name_conflict`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        operationId: "deleteRole",
+        tags: ["Roles"],
+        summary: "Delete role",
+        description:
+          "Removes the role and cascades `user_roles` rows for this role.",
+        responses: {
+          "204": { description: "No body" },
+          "400": {
+            description: "Invalid id",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`role_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/users": {
+      get: {
+        operationId: "listUsers",
+        tags: ["Users"],
+        summary: "List users",
+        parameters: [
+          {
+            name: "page",
+            in: "query",
+            schema: { type: "integer", minimum: 1, default: 1 },
+          },
+          {
+            name: "pageSize",
+            in: "query",
+            schema: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+          },
+          {
+            name: "q",
+            in: "query",
+            description:
+              "Case-insensitive match on `institutionalEmail` or `name`",
+            schema: { type: "string", minLength: 1, maxLength: 200 },
+          },
+          {
+            name: "isActive",
+            in: "query",
+            description:
+              "When set, only `true` or `false` (string). Omit to return users regardless of active flag.",
+            schema: { type: "string", enum: ["true", "false"] },
+          },
+          {
+            name: "sortBy",
+            in: "query",
+            schema: {
+              type: "string",
+              enum: ["createdAt", "name", "institutionalEmail"],
+              default: "createdAt",
+            },
+          },
+          {
+            name: "sortOrder",
+            in: "query",
+            schema: { type: "string", enum: ["asc", "desc"], default: "desc" },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Paged list",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/UserListResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        operationId: "createUser",
+        tags: ["Users"],
+        summary: "Create user",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/UserCreateBody" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Created (password never returned)",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/UserDetailResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "`user_email_conflict`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/users/{userId}": {
+      parameters: [
+        {
+          name: "userId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "getUser",
+        tags: ["Users"],
+        summary: "Get user by id",
+        responses: {
+          "200": {
+            description: "User (no password)",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/UserDetailResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Invalid id",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`user_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      patch: {
+        operationId: "updateUser",
+        tags: ["Users"],
+        summary: "Update user",
+        description:
+          "Partial update. `password` replaces the stored hash (scrypt). `reputation` is a decimal string 0–9.99 (DB `Decimal(3,2)`).",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/UserPatchBody" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Updated user",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/UserDetailResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`user_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "`user_email_conflict`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        operationId: "deleteUser",
+        tags: ["Users"],
+        summary: "Delete user",
+        description:
+          "Hard delete. Fails with `user_in_use` when foreign keys still reference this user (e.g. products, orders).",
+        responses: {
+          "204": { description: "No body" },
+          "400": {
+            description: "Invalid id",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`user_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "`user_in_use`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/users/{userId}/roles": {
+      parameters: [
+        {
+          name: "userId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "listUserRoles",
+        tags: ["User roles"],
+        summary: "List roles assigned to a user",
+        responses: {
+          "200": {
+            description: "Each row includes nested `role`",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/UserRoleListResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Invalid `userId`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`user_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        operationId: "assignUserRole",
+        tags: ["User roles"],
+        summary: "Assign a role to a user",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/UserRoleAssignBody" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Assignment created",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/UserRoleDetailResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`user_not_found` or `role_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "`user_role_exists`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/users/{userId}/roles/{roleId}": {
+      parameters: [
+        {
+          name: "userId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+        {
+          name: "roleId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      delete: {
+        operationId: "removeUserRole",
+        tags: ["User roles"],
+        summary: "Remove a role from a user",
+        responses: {
+          "204": { description: "No body" },
+          "400": {
+            description: "Invalid path ids",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`user_not_found` or `user_role_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
   },
   components: {
     schemas: {
@@ -1631,7 +2231,7 @@ export const openApiDocument = {
               code: {
                 type: "string",
                 description:
-                  "Stable machine code. Includes API codes (`validation_failed`, `buyer_not_found`, `order_not_found`, …) and Prisma client codes (`P2002`, `P2003`, …) when the handler surfaces them. Also `internal_error`, `route_not_found`, `database_unavailable`.",
+                  "Stable machine code. Examples: `validation_failed`, `not_found`, `route_not_found`, `forbidden`, `buyer_not_found`, `seller_not_found`, `category_not_found`, `product_not_found`, `product_removed`, `product_not_available`, `image_not_found`, `order_not_found`, `order_item_not_found`, `order_not_pending`, `insufficient_inventory`, `invalid_order_transition`, `cancelled_only_from_pending`, `conversation_not_found`, `participant_not_found`, `invalid_participants`, `min_participants_required`, `role_not_found`, `role_name_conflict`, `user_not_found`, `user_email_conflict`, `user_in_use`, `user_role_exists`, `user_role_not_found`, `database_unreachable`, … Prisma: `P2002`, `P2003`, `P2015`, `P2025` when surfaced. `database_unavailable`, `internal_error`.",
                 example: "validation_failed",
               },
               message: {
@@ -1654,6 +2254,174 @@ export const openApiDocument = {
           pageSize: { type: "integer" },
           total: { type: "integer" },
           totalPages: { type: "integer" },
+        },
+      },
+      Role: {
+        type: "object",
+        required: ["id", "name", "description", "createdAt"],
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string", maxLength: 50 },
+          description: { type: "string", nullable: true },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      RoleListResponse: {
+        type: "object",
+        required: ["data", "meta"],
+        properties: {
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Role" },
+          },
+          meta: { $ref: "#/components/schemas/PaginationMeta" },
+        },
+      },
+      RoleDetailResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: { $ref: "#/components/schemas/Role" },
+        },
+      },
+      RoleCreateBody: {
+        type: "object",
+        required: ["name"],
+        properties: {
+          name: { type: "string", minLength: 1, maxLength: 50 },
+          description: {
+            type: "string",
+            nullable: true,
+            maxLength: 5000,
+          },
+        },
+      },
+      RolePatchBody: {
+        type: "object",
+        description: "At least one property required.",
+        properties: {
+          name: { type: "string", minLength: 1, maxLength: 50 },
+          description: { type: "string", nullable: true, maxLength: 5000 },
+        },
+      },
+      User: {
+        type: "object",
+        required: [
+          "id",
+          "institutionalEmail",
+          "name",
+          "career",
+          "photoUrl",
+          "reputation",
+          "isActive",
+          "createdAt",
+          "updatedAt",
+        ],
+        properties: {
+          id: { type: "string", format: "uuid" },
+          institutionalEmail: { type: "string", format: "email" },
+          name: { type: "string", maxLength: 150 },
+          career: { type: "string", nullable: true, maxLength: 150 },
+          photoUrl: { type: "string", nullable: true },
+          reputation: {
+            type: "string",
+            description: "Decimal string from `Decimal(3,2)`",
+            example: "0",
+          },
+          isActive: { type: "boolean" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      UserListResponse: {
+        type: "object",
+        required: ["data", "meta"],
+        properties: {
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/User" },
+          },
+          meta: { $ref: "#/components/schemas/PaginationMeta" },
+        },
+      },
+      UserDetailResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: { $ref: "#/components/schemas/User" },
+        },
+      },
+      UserCreateBody: {
+        type: "object",
+        required: ["institutionalEmail", "password", "name"],
+        properties: {
+          institutionalEmail: { type: "string", format: "email" },
+          password: { type: "string", minLength: 8, maxLength: 200 },
+          name: { type: "string", minLength: 1, maxLength: 150 },
+          career: {
+            type: "string",
+            nullable: true,
+            maxLength: 150,
+            description: "Optional; omit or null.",
+          },
+          photoUrl: {
+            type: "string",
+            nullable: true,
+            format: "uri",
+            maxLength: 2000,
+            description: "Optional profile image URL; omit or null.",
+          },
+        },
+      },
+      UserPatchBody: {
+        type: "object",
+        description: "At least one property required.",
+        properties: {
+          institutionalEmail: { type: "string", format: "email" },
+          password: { type: "string", minLength: 8, maxLength: 200 },
+          name: { type: "string", minLength: 1, maxLength: 150 },
+          career: { type: "string", nullable: true, maxLength: 150 },
+          photoUrl: { type: "string", nullable: true, format: "uri" },
+          reputation: {
+            type: "string",
+            pattern: "^(?:[0-9](?:\\.[0-9]{1,2})?)$",
+            description: "0 through 9.99",
+          },
+          isActive: { type: "boolean" },
+        },
+      },
+      UserRoleAssignment: {
+        type: "object",
+        required: ["userId", "roleId", "createdAt", "role"],
+        properties: {
+          userId: { type: "string", format: "uuid" },
+          roleId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          role: { $ref: "#/components/schemas/Role" },
+        },
+      },
+      UserRoleListResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/UserRoleAssignment" },
+          },
+        },
+      },
+      UserRoleDetailResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: { $ref: "#/components/schemas/UserRoleAssignment" },
+        },
+      },
+      UserRoleAssignBody: {
+        type: "object",
+        required: ["roleId"],
+        properties: {
+          roleId: { type: "string", format: "uuid" },
         },
       },
       OrderStatus: {
