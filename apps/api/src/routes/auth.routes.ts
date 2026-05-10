@@ -5,12 +5,7 @@ import { validateBody } from "../middleware/validate-body.js";
 import { loginWithPassword } from "../services/auth.service.js";
 
 const loginBodySchema = z.object({
-  institutionalEmail: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .email()
-    .max(255),
+  institutionalEmail: z.string().trim().toLowerCase().email().max(255),
   password: z.string().min(1).max(200),
 });
 
@@ -25,7 +20,7 @@ router.get("/auth/login", (_req, res) => {
     error: {
       code: "method_not_allowed",
       message:
-        "Login requires POST /api/auth/login with JSON body: { \"institutionalEmail\", \"password\" }",
+        'Login requires POST /api/auth/login with JSON body: { "institutionalEmail", "password" }',
     },
   });
 });

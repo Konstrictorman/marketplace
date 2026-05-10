@@ -14,7 +14,10 @@ function clearSessionCookie(response: NextResponse) {
 }
 
 export async function POST() {
-  const res = NextResponse.json({ data: { ok: true as const } }, { status: 200 });
+  const res = NextResponse.json(
+    { data: { ok: true as const } },
+    { status: 200 },
+  );
   clearSessionCookie(res);
   return res;
 }

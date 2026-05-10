@@ -46,8 +46,7 @@ export function middleware(request: NextRequest) {
   if (isPublic) {
     if (pathname === LOGIN_PATH && authenticated) {
       const callback = request.nextUrl.searchParams.get("callbackUrl");
-      const target =
-        (callback && safeCallbackPath(callback)) ?? "/";
+      const target = (callback && safeCallbackPath(callback)) ?? "/";
       return NextResponse.redirect(new URL(target, request.url));
     }
     return NextResponse.next();

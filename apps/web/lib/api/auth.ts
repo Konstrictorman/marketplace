@@ -12,7 +12,9 @@ export type LoginResponseData = {
 /**
  * Signs in via the Next.js BFF `POST /api/auth/login`, which proxies to Express and sets the HttpOnly `mp_session` cookie.
  */
-export async function login(body: LoginRequestBody): Promise<LoginResponseData> {
+export async function login(
+  body: LoginRequestBody,
+): Promise<LoginResponseData> {
   const { data } = await webApiClient.post<{ data: LoginResponseData }>(
     "/api/auth/login",
     body,

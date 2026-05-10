@@ -206,7 +206,8 @@ export const openApiDocument = {
             },
           },
           "503": {
-            description: "`auth_misconfigured` (e.g. missing `JWT_SECRET` in production)",
+            description:
+              "`auth_misconfigured` (e.g. missing `JWT_SECRET` in production)",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
@@ -2370,7 +2371,8 @@ export const openApiDocument = {
               },
               expiresIn: {
                 type: "string",
-                description: "Lifetime hint (e.g. `7d`); matches server `JWT_EXPIRES_IN`.",
+                description:
+                  "Lifetime hint (e.g. `7d`); matches server `JWT_EXPIRES_IN`.",
                 example: "7d",
               },
             },
