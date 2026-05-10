@@ -33,7 +33,7 @@ export type LoginSuccess = {
 
 /**
  * Validates credentials and returns a signed HS256 JWT.
- * Claims: `sub` (user id), `userId`, `username` (display name), `roles` (role names), `role` (first role name, or empty string).
+ * Claims: `sub` (user id), `userId`, `username` (display name), `institutionalEmail`, `roles` (role names), `role` (first role name, or empty string).
  */
 export async function loginWithPassword(input: {
   institutionalEmail: string;
@@ -51,6 +51,7 @@ export async function loginWithPassword(input: {
     where: { institutionalEmail: email },
     select: {
       id: true,
+      institutionalEmail: true,
       name: true,
       passwordHash: true,
       isActive: true,
@@ -84,6 +85,7 @@ export async function loginWithPassword(input: {
   const token = await new SignJWT({
     userId: user.id,
     username: user.name,
+    institutionalEmail: user.institutionalEmail,
     roles: roleNames,
     role: primaryRole,
   })

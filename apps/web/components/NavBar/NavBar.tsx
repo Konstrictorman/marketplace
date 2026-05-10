@@ -1,17 +1,39 @@
 "use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import { usePathname, useRouter } from "next/navigation";
+import { Avatar } from "@mui/material";
 import ShoppingCart from "../ShoppingCart/ShoppingCart";
-import { logout } from "@/lib/api/auth";
+import {
+  getAuthSession,
+  logout,
+  type AuthSessionData,
+} from "@/lib/api/auth";
 
 export default function NavBar() {
   const router = useRouter();
+  const pathname = usePathname();
+  const [session, setSession] = useState<AuthSessionData | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getAuthSession()
+      .then((s) => {
+        if (!cancelled) setSession(s);
+      })
+      .catch(() => {
+        if (!cancelled) setSession({ authenticated: false });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
 
   async function handleLogout() {
     try {
       await logout();
     } finally {
+      setSession({ authenticated: false });
       router.push("/login");
       router.refresh();
     }
@@ -39,16 +61,6 @@ export default function NavBar() {
       >
         Home
       </Link>
-      <Link
-        href="/login"
-        style={{
-          color: "rgb(254, 254, 254)",
-          textDecoration: "none",
-          fontWeight: "500",
-        }}
-      >
-        Login
-      </Link>
 
       {/* Spacer */}
       <div style={{ flex: 1 }} />
@@ -56,13 +68,23 @@ export default function NavBar() {
       {/* Right side */}
       <ShoppingCart />
 
-      <AccountCircleIcon
-        style={{
-          color: "rgb(189, 197, 217)",
-          fontSize: "28px",
-          cursor: "pointer",
+      <Avatar
+        aria-label={
+          session?.authenticated
+            ? `Signed in (${session.initials})`
+            : "Not signed in"
+        }
+        sx={{
+          width: 32,
+          height: 32,
+          fontSize: "0.8125rem",
+          fontWeight: 600,
+          bgcolor: "rgb(189, 197, 217)",
+          color: "rgb(24, 62, 157)",
         }}
-      />
+      >
+        {session?.authenticated ? session.initials : "?"}
+      </Avatar>
 
       <button
         type="button"

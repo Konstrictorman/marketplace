@@ -7,6 +7,8 @@ const REGISTER_PATH = "/register";
 const AUTH_LOGIN_PROXY_PATH = "/api/auth/login";
 /** Clears `mp_session` (POST JSON or GET redirect). */
 const AUTH_LOGOUT_PATH = "/api/auth/logout";
+/** Public session probe for UI (initials); cookie is HttpOnly. */
+const AUTH_SESSION_PATH = "/api/auth/session";
 
 /** Paths that do not require a session. */
 const PUBLIC_PREFIXES = [
@@ -14,6 +16,7 @@ const PUBLIC_PREFIXES = [
   REGISTER_PATH,
   AUTH_LOGIN_PROXY_PATH,
   AUTH_LOGOUT_PATH,
+  AUTH_SESSION_PATH,
 ] as const;
 
 function pathnameIsPublic(pathname: string): boolean {

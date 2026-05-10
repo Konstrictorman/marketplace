@@ -27,7 +27,7 @@ export const openApiDocument = {
     {
       name: "Authentication",
       description:
-        "`POST /auth/login` issues an HS256 JWT (`data.token`, `data.expiresIn`). Claims include `sub`/`userId`, `username`, `roles`, `role`. **`GET /auth/login`** returns `405` with `Allow: POST` (avoids `route_not_found` for probes). **Next.js BFF** (`apps/web`): same credentials to the web app’s `POST /api/auth/login` set HttpOnly `mp_session`; end session with **`POST` or `GET`** `/api/auth/logout` on the **web** host (cookie clear + optional redirect to `/login`).",
+        "`POST /auth/login` issues an HS256 JWT (`data.token`, `data.expiresIn`). Claims include `sub`/`userId`, `username`, `institutionalEmail`, `roles`, `role`. **`GET /auth/login`** returns `405` with `Allow: POST` (avoids `route_not_found` for probes). **Next.js BFF** (`apps/web`): same credentials to the web app’s `POST /api/auth/login` set HttpOnly `mp_session`; end session with **`POST` or `GET`** `/api/auth/logout` on the **web** host (cookie clear + optional redirect to `/login`).",
     },
     {
       name: "Products",
@@ -163,7 +163,7 @@ export const openApiDocument = {
         tags: ["Authentication"],
         summary: "Login with institutional email and password",
         description:
-          "Returns a **Bearer** JWT in `data.token` and lifetime hint in `data.expiresIn`. Claims: `sub` (user UUID), `userId`, `username` (display name), `roles` (array of role names), `role` (first role name, or empty string), plus `iat` / `exp`. Configure `JWT_SECRET` (≥32 chars) and optional `JWT_EXPIRES_IN` (default `7d`) on the server. **Next.js BFF:** the marketplace web app proxies this route; the browser receives `{ data: { ok: true } }` and an HttpOnly `mp_session` cookie. **Logout** for that flow is **`POST` or `GET` `/api/auth/logout`** on the web app (this Express API has no logout endpoint).",
+          "Returns a **Bearer** JWT in `data.token` and lifetime hint in `data.expiresIn`. Claims: `sub` (user UUID), `userId`, `username` (display name), `institutionalEmail`, `roles` (array of role names), `role` (first role name, or empty string), plus `iat` / `exp`. Configure `JWT_SECRET` (≥32 chars) and optional `JWT_EXPIRES_IN` (default `7d`) on the server. **Next.js BFF:** the marketplace web app proxies this route; the browser receives `{ data: { ok: true } }` and an HttpOnly `mp_session` cookie. **Logout** for that flow is **`POST` or `GET` `/api/auth/logout`** on the web app (this Express API has no logout endpoint).",
         requestBody: {
           required: true,
           content: {
@@ -2363,7 +2363,7 @@ export const openApiDocument = {
               token: {
                 type: "string",
                 description:
-                  "HS256 JWT. Payload includes `sub`, `userId`, `username`, `roles`, `role`, `iat`, `exp`.",
+                  "HS256 JWT. Payload includes `sub`, `userId`, `username`, `institutionalEmail`, `roles`, `role`, `iat`, `exp`.",
               },
               tokenType: {
                 type: "string",
