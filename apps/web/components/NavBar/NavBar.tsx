@@ -1,13 +1,43 @@
 "use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
+import { usePathname, useRouter } from "next/navigation";
+import { Avatar } from "@mui/material";
 import ShoppingCart from "../ShoppingCart/ShoppingCart";
+import { getAuthSession, logout, type AuthSessionData } from "@/lib/api/auth";
 import NotificationsButton from "../NotificationsIcon/NotificationsIcon";
 import SearchBar from "../SearchBar/SearchBar";
 import ChatButton from "../ChatIcon/ChatIcon";
 import { Suspense } from "react";
 
 export default function NavBar() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [session, setSession] = useState<AuthSessionData | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getAuthSession()
+      .then((s) => {
+        if (!cancelled) setSession(s);
+      })
+      .catch(() => {
+        if (!cancelled) setSession({ authenticated: false });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  async function handleLogout() {
+    try {
+      await logout();
+    } finally {
+      setSession({ authenticated: false });
+      router.push("/login");
+      router.refresh();
+    }
+  }
   return (
     <nav
       style={{
@@ -31,16 +61,6 @@ export default function NavBar() {
       >
         Home
       </Link>
-      <Link
-        href="/login"
-        style={{
-          color: "rgb(254, 254, 254)",
-          textDecoration: "none",
-          fontWeight: "500",
-        }}
-      >
-        Login
-      </Link>
 
       <Suspense fallback={null}>
         <SearchBar />
@@ -52,26 +72,42 @@ export default function NavBar() {
       <ShoppingCart />
       <NotificationsButton />
       <ChatButton />
-
-      <AccountCircleIcon
+      {session?.authenticated && (
+        <Avatar
+          aria-label={
+            session?.authenticated
+              ? `Signed in (${session.initials})`
+              : "Not signed in"
+          }
+          sx={{
+            width: 32,
+            height: 32,
+            fontSize: "0.8125rem",
+            fontWeight: 600,
+            bgcolor: "rgb(189, 197, 217)",
+            color: "rgb(24, 62, 157)",
+          }}
+        >
+          {session?.authenticated ? session.initials : "?"}
+        </Avatar>
+      )}
+      <button
+        type="button"
+        onClick={() => void handleLogout()}
         style={{
-          color: "rgb(189, 197, 217)",
-          fontSize: "28px",
+          background: "none",
+          border: "none",
+          padding: 0,
           cursor: "pointer",
-        }}
-      />
-
-      <Link
-        href="/logout"
-        style={{
           color: "rgb(189, 197, 217)",
           textDecoration: "none",
           fontWeight: "500",
           fontSize: "0.9rem",
+          fontFamily: "inherit",
         }}
       >
         Log out
-      </Link>
+      </button>
     </nav>
   );
 }

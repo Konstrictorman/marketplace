@@ -61,7 +61,7 @@ export default function Home() {
         <Button
           variant="outlined"
           size="large"
-          href="/vender"
+          href="/sell"
           sx={{
             textTransform: "none",
             px: 5,
