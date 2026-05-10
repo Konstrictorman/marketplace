@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { AUTH_SESSION_COOKIE_NAME } from "./lib/auth-session";
 
 const LOGIN_PATH = "/login";
+const REGISTER_PATH = "/register";
 /** Next Route Handler that proxies to Express `POST /api/auth/login` and sets `mp_session`. */
 const AUTH_LOGIN_PROXY_PATH = "/api/auth/login";
 /** Clears `mp_session` (POST JSON or GET redirect). */
@@ -10,6 +11,7 @@ const AUTH_LOGOUT_PATH = "/api/auth/logout";
 /** Paths that do not require a session. */
 const PUBLIC_PREFIXES = [
   LOGIN_PATH,
+  REGISTER_PATH,
   AUTH_LOGIN_PROXY_PATH,
   AUTH_LOGOUT_PATH,
 ] as const;
@@ -35,6 +37,8 @@ function isAuthenticated(request: NextRequest): boolean {
 function safeCallbackPath(path: string): string | null {
   if (!path.startsWith("/") || path.startsWith("//")) return null;
   if (path === LOGIN_PATH || path.startsWith(`${LOGIN_PATH}/`)) return null;
+  if (path === REGISTER_PATH || path.startsWith(`${REGISTER_PATH}/`))
+    return null;
   return path;
 }
 
@@ -48,6 +52,9 @@ export function proxy(request: NextRequest) {
       const callback = request.nextUrl.searchParams.get("callbackUrl");
       const target = (callback && safeCallbackPath(callback)) ?? "/";
       return NextResponse.redirect(new URL(target, request.url));
+    }
+    if (pathname === REGISTER_PATH && authenticated) {
+      return NextResponse.redirect(new URL("/", request.url));
     }
     return NextResponse.next();
   }

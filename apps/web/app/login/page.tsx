@@ -1,16 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import {
   Box,
   Button,
   TextField,
   Typography,
   Divider,
-  Modal,
-  MenuItem,
-  Select,
-  InputLabel,
-  FormControl,
   IconButton,
   InputAdornment,
 } from "@mui/material";
@@ -19,234 +15,25 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { useRouter } from "next/navigation";
 import { login } from "@/lib/api/auth";
 import { isApiError } from "@/lib/api/client";
-
-const CAREERS = [
-  "Administración de Empresas",
-  "Arquitectura",
-  "Comunicación Social",
-  "Derecho",
-  "Enfermería",
-  "Ingeniería Civil",
-  "Ingeniería de Sistemas",
-  "Ingeniería Industrial",
-  "Medicina",
-  "Psicología",
-];
-
-const RegisterModal = ({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) => {
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [form, setForm] = useState({
-    fullName: "",
-    email: "",
-    career: "",
-    password: "",
-    confirmPassword: "",
-  });
-  const [errors, setErrors] = useState<Record<string, string>>({});
-
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!form.fullName.trim()) newErrors.fullName = "Full name is required";
-    if (!form.email.trim()) newErrors.email = "Email is required";
-    else if (!form.email.endsWith("@unisabana.edu.co"))
-      newErrors.email = "Must be an institutional email (@unisabana.edu.co)";
-    if (!form.password) newErrors.password = "Password is required";
-    else if (form.password.length < 8)
-      newErrors.password = "Password must be at least 8 characters";
-    if (!form.confirmPassword)
-      newErrors.confirmPassword = "Please confirm your password";
-    else if (form.password !== form.confirmPassword)
-      newErrors.confirmPassword = "Passwords do not match";
-    return newErrors;
-  };
-
-  const handleSubmit = () => {
-    const newErrors = validate();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-    // TODO: connect to backend
-    console.log("Register:", form);
-    onClose();
-  };
-
-  return (
-    <Modal open={open} onClose={onClose}>
-      <Box
-        sx={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: { xs: "90%", sm: 480 },
-          bgcolor: "rgb(254, 254, 254)",
-          borderRadius: "16px",
-          boxShadow: "0px 8px 40px rgba(76, 98, 153, 0.3)",
-          p: 4,
-          outline: "none",
-          maxHeight: "90vh",
-          overflow: "auto",
-        }}
-      >
-        <Typography
-          variant="h5"
-          sx={{ fontWeight: "bold", color: "rgb(0, 28, 100)", mb: 3 }}
-        >
-          Create Account
-        </Typography>
-
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {/* Full Name */}
-          <TextField
-            label="Full Name"
-            fullWidth
-            value={form.fullName}
-            onChange={(e) => setForm({ ...form, fullName: e.target.value })}
-            error={!!errors.fullName}
-            helperText={errors.fullName}
-          />
-
-          {/* Institutional Email */}
-          <TextField
-            label="Institutional Email"
-            fullWidth
-            placeholder="username@unisabana.edu.co"
-            value={form.email}
-            onChange={(e) => setForm({ ...form, email: e.target.value })}
-            error={!!errors.email}
-            helperText={errors.email || "Must be your @unisabana.edu.co email"}
-          />
-
-          {/* Career (optional) */}
-          <FormControl fullWidth>
-            <InputLabel>Career (optional)</InputLabel>
-            <Select
-              value={form.career}
-              label="Career (optional)"
-              onChange={(e) => setForm({ ...form, career: e.target.value })}
-            >
-              <MenuItem value="">
-                <em>Prefer not to say</em>
-              </MenuItem>
-              {CAREERS.map((career) => (
-                <MenuItem key={career} value={career}>
-                  {career}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* Password */}
-          <TextField
-            label="Password"
-            fullWidth
-            type={showPassword ? "text" : "password"}
-            value={form.password}
-            onChange={(e) => setForm({ ...form, password: e.target.value })}
-            error={!!errors.password}
-            helperText={errors.password}
-            slotProps={{
-              input: {
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => setShowPassword(!showPassword)}>
-                      {showPassword ? (
-                        <VisibilityOffIcon />
-                      ) : (
-                        <VisibilityIcon />
-                      )}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-
-          {/* Confirm Password */}
-          <TextField
-            label="Confirm Password"
-            fullWidth
-            type={showConfirm ? "text" : "password"}
-            value={form.confirmPassword}
-            onChange={(e) =>
-              setForm({ ...form, confirmPassword: e.target.value })
-            }
-            error={!!errors.confirmPassword}
-            helperText={errors.confirmPassword}
-            slotProps={{
-              input: {
-                endAdornment: (
-                  <InputAdornment position="end">
-                    <IconButton onClick={() => setShowConfirm(!showConfirm)}>
-                      {showConfirm ? <VisibilityOffIcon /> : <VisibilityIcon />}
-                    </IconButton>
-                  </InputAdornment>
-                ),
-              },
-            }}
-          />
-        </Box>
-
-        <Box sx={{ display: "flex", gap: 1, mt: 3 }}>
-          <Button
-            variant="outlined"
-            fullWidth
-            onClick={onClose}
-            sx={{
-              borderRadius: "10px",
-              borderColor: "rgb(24, 62, 157)",
-              color: "rgb(24, 62, 157)",
-              "&:hover": {
-                borderColor: "rgb(29, 54, 120)",
-                backgroundColor: "rgba(24, 62, 157, 0.05)",
-              },
-            }}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
-            fullWidth
-            onClick={handleSubmit}
-            sx={{
-              borderRadius: "10px",
-              backgroundColor: "rgb(24, 62, 157)",
-              "&:hover": { backgroundColor: "rgb(29, 54, 120)" },
-            }}
-          >
-            Register
-          </Button>
-        </Box>
-      </Box>
-    </Modal>
-  );
-};
-
-function buildInstitutionalEmail(localOrFull: string): string {
-  const trimmed = localOrFull.trim().toLowerCase();
-  if (trimmed.includes("@")) {
-    return trimmed;
-  }
-  return `${trimmed}@unisabana.edu.co`;
-}
+import { buildInstitutionalEmail, INSTITUTIONAL_EMAIL_DOMAIN } from "@/lib/institutional-email";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [registerOpen, setRegisterOpen] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [registeredBanner, setRegisteredBanner] = useState(false);
 
   const router = useRouter();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("registered") === "1") {
+      setRegisteredBanner(true);
+      router.replace("/login", { scroll: false });
+    }
+  }, [router]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -322,6 +109,19 @@ export default function LoginPage() {
           Welcome
         </Typography>
 
+        {registeredBanner ? (
+          <Typography
+            variant="body2"
+            sx={{
+              textAlign: "center",
+              color: "success.main",
+              mb: 2,
+            }}
+          >
+            Account created. You can sign in below.
+          </Typography>
+        ) : null}
+
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {/* Username */}
           <TextField
@@ -340,7 +140,7 @@ export default function LoginPage() {
                       variant="body2"
                       sx={{ color: "rgb(131, 148, 189)" }}
                     >
-                      @unisabana.edu.co
+                      {INSTITUTIONAL_EMAIL_DOMAIN}
                     </Typography>
                   </InputAdornment>
                 ),
@@ -399,27 +199,19 @@ export default function LoginPage() {
         <Box sx={{ textAlign: "center" }}>
           <Typography variant="body2" sx={{ color: "rgb(131, 148, 189)" }}>
             Dont have an account?{" "}
-            <Typography
-              component="span"
-              variant="body2"
-              onClick={() => setRegisterOpen(true)}
-              sx={{
+            <Link
+              href="/register"
+              style={{
                 color: "rgb(24, 62, 157)",
-                fontWeight: "bold",
-                cursor: "pointer",
-                "&:hover": { textDecoration: "underline" },
+                fontWeight: 700,
+                textDecoration: "none",
               }}
             >
               Register here
-            </Typography>
+            </Link>
           </Typography>
         </Box>
       </Box>
-
-      <RegisterModal
-        open={registerOpen}
-        onClose={() => setRegisterOpen(false)}
-      />
     </Box>
   );
 }
