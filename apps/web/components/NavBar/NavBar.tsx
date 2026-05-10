@@ -2,6 +2,9 @@
 import Link from "next/link";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import ShoppingCart from "../ShoppingCart/ShoppingCart";
+import NotificationsButton from "../NotificationsIcon/NotificationsIcon";
+import SearchBar from "../SearchBar/SearchBar";
+import ChatButton from "../ChatIcon/ChatIcon";
 
 export default function NavBar() {
   return (
@@ -38,11 +41,14 @@ export default function NavBar() {
         Login
       </Link>
 
+      <SearchBar />
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 
       {/* Right side */}
       <ShoppingCart />
+      <NotificationsButton />
+      <ChatButton />
 
       <AccountCircleIcon
         style={{

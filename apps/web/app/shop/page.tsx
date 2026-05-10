@@ -1,6 +1,8 @@
 "use client";
-import { Box, Grid } from "@mui/material";
+import { Box, Grid, Typography } from "@mui/material";
 import ProductCard from "@/components/ProductCard/ProductCard";
+import { useSearchParams } from "next/navigation";
+
 const products = [
   {
     id: "1",
@@ -71,22 +73,56 @@ const products = [
 ];
 
 export default function Shop() {
+  const searchParams = useSearchParams();
+  const searchQuery = searchParams.get("search")?.toLowerCase() ?? "";
+
+  const filteredProducts = searchQuery
+    ? products.filter(
+        (p) =>
+          p.name.toLowerCase().includes(searchQuery) ||
+          p.description.toLowerCase().includes(searchQuery),
+      )
+    : products;
+
   return (
     <Box
       sx={{
         p: 4,
-        backgroundColor: "rgb(179, 179, 179)",
+        backgroundColor: "rgb(255, 255, 255)",
         flex: 1,
       }}
     >
-      <Grid container spacing={3} sx={{ justifyContent: "flex-start" }}>
-        {products.map((product) => (
-          <Grid key={product.id}>
-            <ProductCard product={product} />
-          </Grid>
-        ))}
-        {/* Product cards will go here */}
-      </Grid>
+      {searchQuery && (
+        <Typography variant="body1" sx={{ color: "rgb(0, 62, 219)", mb: 2 }}>
+          {filteredProducts.length > 0
+            ? `Showing ${filteredProducts.length} result(s) for "${searchQuery}"`
+            : `No results found for "${searchQuery}"`}
+        </Typography>
+      )}
+
+      {filteredProducts.length > 0 ? (
+        <Grid container spacing={3} sx={{ justifyContent: "flex-start" }}>
+          {filteredProducts.map((product) => (
+            <Grid key={product.id}>
+              <ProductCard product={product} />
+            </Grid>
+          ))}
+          {/* Product cards will go here */}
+        </Grid>
+      ) : (
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            height: 300,
+          }}
+        >
+          <Typography variant="h6" sx={{ color: "rgb(189, 197, 217" }}>
+            No products found
+          </Typography>
+        </Box>
+      )}
     </Box>
   );
 }
