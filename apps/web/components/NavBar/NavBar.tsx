@@ -5,6 +5,7 @@ import ShoppingCart from "../ShoppingCart/ShoppingCart";
 import NotificationsButton from "../NotificationsIcon/NotificationsIcon";
 import SearchBar from "../SearchBar/SearchBar";
 import ChatButton from "../ChatIcon/ChatIcon";
+import { Suspense } from "react";
 
 export default function NavBar() {
   return (
@@ -41,7 +42,9 @@ export default function NavBar() {
         Login
       </Link>
 
-      <SearchBar />
+      <Suspense fallback={null}>
+        <SearchBar />
+      </Suspense>
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 

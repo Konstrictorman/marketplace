@@ -2,6 +2,7 @@
 import { Box, Grid, Typography } from "@mui/material";
 import ProductCard from "@/components/ProductCard/ProductCard";
 import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 const products = [
   {
@@ -72,7 +73,7 @@ const products = [
   },
 ];
 
-export default function Shop() {
+function ShopContent() {
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("search")?.toLowerCase() ?? "";
 
@@ -124,5 +125,19 @@ export default function Shop() {
         </Box>
       )}
     </Box>
+  );
+}
+
+export default function Shop() {
+  return (
+    <Suspense
+      fallback={
+        <Box sx={{ p: 4, flex: 1, backgroundColor: "rgb(255,255,255)" }}>
+          <Typography sx={{ color: "rgb(76, 98, 153)" }}>Loading...</Typography>
+        </Box>
+      }
+    >
+      <ShopContent />
+    </Suspense>
   );
 }
