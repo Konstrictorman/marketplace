@@ -38,7 +38,7 @@ function safeCallbackPath(path: string): string | null {
   return path;
 }
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const authenticated = isAuthenticated(request);
   const isPublic = pathnameIsPublic(pathname);
