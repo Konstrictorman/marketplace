@@ -26,6 +26,9 @@ export type UserPublic = {
 export async function createUser(
   body: CreateUserRequestBody,
 ): Promise<UserPublic> {
-  const { data } = await apiClient.post<{ data: UserPublic }>("/api/users", body);
+  const { data } = await apiClient.post<{ data: UserPublic }>(
+    "/api/users",
+    body,
+  );
   return data.data;
 }

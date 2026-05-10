@@ -1,4 +1,5 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
@@ -15,7 +16,10 @@ import VisibilityOffIcon from "@mui/icons-material/VisibilityOff";
 import { useRouter } from "next/navigation";
 import { login } from "@/lib/api/auth";
 import { isApiError } from "@/lib/api/client";
-import { buildInstitutionalEmail, INSTITUTIONAL_EMAIL_DOMAIN } from "@/lib/institutional-email";
+import {
+  buildInstitutionalEmail,
+  INSTITUTIONAL_EMAIL_DOMAIN,
+} from "@/lib/institutional-email";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
@@ -29,10 +33,13 @@ export default function LoginPage() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("registered") === "1") {
+    if (params.get("registered") !== "1") return;
+
+    const id = window.setTimeout(() => {
       setRegisteredBanner(true);
       router.replace("/login", { scroll: false });
-    }
+    }, 0);
+    return () => window.clearTimeout(id);
   }, [router]);
 
   const validate = () => {
@@ -96,7 +103,6 @@ export default function LoginPage() {
           p: 4,
         }}
       >
-        {/* Title */}
         <Typography
           variant="h5"
           sx={{
@@ -123,7 +129,6 @@ export default function LoginPage() {
         ) : null}
 
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          {/* Username */}
           <TextField
             label="Username"
             fullWidth
@@ -148,7 +153,6 @@ export default function LoginPage() {
             }}
           />
 
-          {/* Password */}
           <TextField
             label="Password"
             fullWidth
@@ -161,7 +165,13 @@ export default function LoginPage() {
               input: {
                 endAdornment: (
                   <InputAdornment position="end">
-                    <IconButton onClick={() => setShowPassword(!showPassword)}>
+                    <IconButton
+                      type="button"
+                      aria-label={
+                        showPassword ? "Hide password" : "Show password"
+                      }
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
                       {showPassword ? (
                         <VisibilityOffIcon />
                       ) : (
@@ -175,7 +185,6 @@ export default function LoginPage() {
           />
         </Box>
 
-        {/* Login button */}
         <Button
           variant="contained"
           fullWidth
@@ -195,10 +204,9 @@ export default function LoginPage() {
 
         <Divider sx={{ my: 2, borderColor: "rgb(189, 197, 217)" }} />
 
-        {/* Register link */}
         <Box sx={{ textAlign: "center" }}>
           <Typography variant="body2" sx={{ color: "rgb(131, 148, 189)" }}>
-            Dont have an account?{" "}
+            Don&apos;t have an account?{" "}
             <Link
               href="/register"
               style={{
