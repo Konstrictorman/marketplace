@@ -49,7 +49,10 @@ services:
       context: .
       dockerfile: docker/web/Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:3001
+        # Baked into the Next.js client at build time. Local Docker: omit or use default.
+        # On the VM: set WEB_NEXT_PUBLIC_API_URL in `.env` next to this file, e.g.
+        #   WEB_NEXT_PUBLIC_API_URL=http://YOUR_PUBLIC_IP:3001
+        NEXT_PUBLIC_API_URL: ${WEB_NEXT_PUBLIC_API_URL:-http://localhost:3001}
     image: marketplace-web:latest
     restart: unless-stopped
     ports:

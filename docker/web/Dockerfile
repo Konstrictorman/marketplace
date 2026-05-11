@@ -3,7 +3,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Inlined into the client bundle at build time — must be reachable from the user's browser.
+# Inlined into the client bundle at build time — must be the URL the *browser* uses to reach Express.
+# Default: local Docker / dev. Override at image build: `docker build --build-arg NEXT_PUBLIC_API_URL=http://<public-ip>:3001 ...`
+# or docker-compose `args` / env (see docker-compose.yml `WEB_NEXT_PUBLIC_API_URL`).
 ARG NEXT_PUBLIC_API_URL=http://localhost:3001
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
