@@ -56,16 +56,31 @@ jobs:
             git checkout master
             git reset --hard origin/master
 
+            # Add detailed debugging here
+            echo "Current directory: $(pwd)"
+            echo "Listing contents:"
+            ls -la
+            echo "Checking if apps/api exists:"
+            ls -ld apps/api 2>&1 || echo "apps/api does not exist yet"
+
             # docker-compose reads apps/api/.env — merge JWT from GitHub (file is gitignored on the VM).
             ENV_FILE="apps/api/.env"
-            mkdir -p apps/api
-            touch "$ENV_FILE"
+            echo "Creating ENV_FILE at: $ENV_FILE"
+            mkdir -p apps/api || { echo "ERROR: mkdir -p apps/api failed"; exit 1; }
+            touch "$ENV_FILE" || { echo "ERROR: touch $ENV_FILE failed"; exit 1; }
+
             if grep -q '^JWT_SECRET=' "$ENV_FILE" 2>/dev/null; then
-              grep -v '^JWT_SECRET=' "$ENV_FILE" >"${ENV_FILE}.tmp"
-              mv "${ENV_FILE}.tmp" "$ENV_FILE"
+              echo "Removing existing JWT_SECRET from $ENV_FILE"
+              grep -v '^JWT_SECRET=' "$ENV_FILE" >"${ENV_FILE}.tmp" || { echo "ERROR: grep -v failed"; exit 1; }
+              mv "${ENV_FILE}.tmp" "$ENV_FILE" || { echo "ERROR: mv failed"; exit 1; }
             fi
-            printf 'JWT_SECRET=%s\n' "$JWT_SECRET" >>"$ENV_FILE"
+
+            echo "Adding JWT_SECRET to $ENV_FILE"
+            printf 'JWT_SECRET=%s\n' "$JWT_SECRET" >>"$ENV_FILE" || { echo "ERROR: printf to $ENV_FILE failed"; exit 1; }
             chmod 600 "$ENV_FILE" || true
+
+            echo "ENV_FILE contents:"
+            cat "$ENV_FILE"
 
             docker compose up -d --build --remove-orphans
             docker compose ps
