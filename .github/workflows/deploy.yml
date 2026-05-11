@@ -105,9 +105,8 @@ jobs:
 
             if grep -q '^JWT_SECRET=' "$ENV_FILE" 2>/dev/null; then
               echo "Removing existing JWT_SECRET from $ENV_FILE"
-              # sed (not grep -v): grep exits 1 when it would print zero lines, which breaks set -e
-              # when .env contained only JWT_SECRET=...
-              sed '/^JWT_SECRET=/d' "$ENV_FILE" >"${ENV_FILE}.tmp" || { echo "ERROR: sed strip JWT_SECRET failed"; exit 1; }
+              # grep -v exits 1 when nothing is printed (e.g. .env only contained JWT_SECRET); || true avoids set -e abort.
+              grep -v '^JWT_SECRET=' "$ENV_FILE" >"${ENV_FILE}.tmp" || true
               mv "${ENV_FILE}.tmp" "$ENV_FILE" || { echo "ERROR: mv failed"; exit 1; }
             fi
 
