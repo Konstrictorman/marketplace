@@ -202,6 +202,7 @@ const ProductDetailModal = ({
             fullWidth
             onClick={onClose}
             sx={{
+              textTransform: "none",
               borderRadius: "10px",
               py: 1.2,
               borderColor: "rgb(24, 62, 157)",
@@ -224,6 +225,7 @@ const ProductDetailModal = ({
               onClose();
             }}
             sx={{
+              textTransform: "none",
               borderRadius: "10px",
               py: 1.2,
               backgroundColor: "rgb(24, 62, 157)",

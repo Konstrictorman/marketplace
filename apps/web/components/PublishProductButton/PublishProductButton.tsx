@@ -143,7 +143,12 @@ function PublishProductFormModal({
           id="publish-product-title"
           variant="h6"
           component="h2"
-          sx={{ fontWeight: 700, color: "rgb(0, 28, 100)", mb: 2 }}
+          sx={{
+            textTransform: "none",
+            fontWeight: 700,
+            color: "rgb(0, 28, 100)",
+            mb: 2,
+          }}
         >
           Publicar nuevo producto
         </Typography>
@@ -267,7 +272,7 @@ function PublishProductFormModal({
               variant="outlined"
               onClick={closeModal}
               disabled={isSubmitting}
-              sx={{ borderRadius: "10px" }}
+              sx={{ textTransform: "none", borderRadius: "10px" }}
             >
               Cancelar
             </Button>
@@ -276,6 +281,7 @@ function PublishProductFormModal({
               variant="contained"
               disabled={isSubmitting}
               sx={{
+                textTransform: "none",
                 borderRadius: "10px",
                 bgcolor: "rgb(24, 62, 157)",
                 "&:hover": { bgcolor: "rgb(29, 54, 120)" },

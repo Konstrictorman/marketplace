@@ -59,6 +59,7 @@ export default function CartPage() {
           component={Link}
           href="/shop"
           sx={{
+            textTransform: "none",
             mt: 1,
             borderRadius: "10px",
             backgroundColor: "rgb(24, 62, 157)",
@@ -114,7 +115,11 @@ export default function CartPage() {
             variant="text"
             size="small"
             onClick={clearCart}
-            sx={{ color: "rgb(131, 148, 189)", fontSize: "0.8rem" }}
+            sx={{
+              textTransform: "none",
+              color: "rgb(131, 148, 189)",
+              fontSize: "0.8rem",
+            }}
           >
             Remove All
           </Button>
@@ -316,6 +321,7 @@ export default function CartPage() {
           fullWidth
           disabled={selectedItems.length === 0}
           sx={{
+            textTransform: "none",
             borderRadius: "10px",
             py: 1.2,
             mb: 1,
@@ -333,6 +339,7 @@ export default function CartPage() {
           component={Link}
           href="/shop"
           sx={{
+            textTransform: "none",
             borderRadius: "10px",
             py: 1.2,
             borderColor: "rgb(24, 62, 157)",

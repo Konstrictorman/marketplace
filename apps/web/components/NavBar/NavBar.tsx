@@ -1,15 +1,19 @@
 "use client";
-import { useEffect, useState } from "react";
-import Link from "next/link";
+import { useEffect, useState, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Avatar } from "@mui/material";
+import { Avatar, Button, Skeleton } from "@mui/material";
 import ShoppingCart from "../ShoppingCart/ShoppingCart";
 import { getAuthSession, logout, type AuthSessionData } from "@/lib/api/auth";
+import NotificationsButton from "../NotificationsButton/NotificationsButton";
+import SearchBar from "../SearchBar/SearchBar";
+import ChatButton from "../ChatButton/ChatButton";
 
 export default function NavBar() {
   const router = useRouter();
   const pathname = usePathname();
   const [session, setSession] = useState<AuthSessionData | null>(null);
+  const islogin = pathname === "/login";
+  const isshop = pathname === "/shop";
 
   useEffect(() => {
     let cancelled = false;
@@ -47,7 +51,7 @@ export default function NavBar() {
       }}
     >
       {/* Left side — links */}
-      <Link
+      <Button
         href="/"
         style={{
           color: "rgb(254, 254, 254)",
@@ -56,13 +60,31 @@ export default function NavBar() {
         }}
       >
         Home
-      </Link>
+      </Button>
+
+      <Suspense
+        fallback={
+          <Skeleton
+            variant="rounded"
+            width={400}
+            height={36}
+            sx={{
+              backgroundColor: "rgba(254, 254, 254, 0.15)",
+              borderRadius: "8px",
+            }}
+          />
+        }
+      >
+        {isshop && <SearchBar />}
+      </Suspense>
 
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 
       {/* Right side */}
-      <ShoppingCart />
+      {isshop && <ShoppingCart />}
+      {!islogin && <NotificationsButton />}
+      {!islogin && <ChatButton />}
       {session?.authenticated && (
         <Avatar
           aria-label={
