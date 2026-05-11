@@ -35,10 +35,15 @@ jobs:
             export WEB_NEXT_PUBLIC_API_URL
             export AZ_VM_APP_DIR
 
+            # One line only; strip CR — pasted secrets often include a trailing newline
+            AZ_VM_APP_DIR="$(printf '%s' "$AZ_VM_APP_DIR" | head -n1 | tr -d '\r')"
+            export AZ_VM_APP_DIR
+
             echo "=== Validating secrets and variables ==="
             echo "JWT_SECRET length: ${#JWT_SECRET}"
             echo "WEB_NEXT_PUBLIC_API_URL: $WEB_NEXT_PUBLIC_API_URL"
-            echo "AZ_VM_APP_DIR exists: $([ -n "$APP_DIR" ] && echo 'yes' || echo 'no')"
+            echo "AZ_VM_APP_DIR set (non-empty): $([ -n "$AZ_VM_APP_DIR" ] && echo yes || echo no)"
+            echo "AZ_VM_APP_DIR is a directory on the VM: $([ -d "$AZ_VM_APP_DIR" ] && echo yes || echo no)"
 
             if [ -z "$JWT_SECRET" ] || [ "${#JWT_SECRET}" -lt 32 ]; then
               echo "ERROR: JWT_SECRET must be set and at least 32 characters"
@@ -55,7 +60,10 @@ jobs:
               exit 1
             fi
 
-            echo "AZ_VM_APP_DIR: $AZ_VM_APP_DIR"
+            if [ ! -d "$AZ_VM_APP_DIR" ]; then
+              echo "ERROR: AZ_VM_APP_DIR is not a directory on this VM: '$AZ_VM_APP_DIR'"
+              exit 1
+            fi
 
             cd "$AZ_VM_APP_DIR"
             git fetch --all --prune
@@ -65,7 +73,9 @@ jobs:
             echo "Current directory: $(pwd)"
 
             if [ ! -f docker-compose.yml ]; then
-              echo "ERROR: docker-compose.yml not found here — verify AZ_VM_APP_DIR points to the repo root."
+              echo "ERROR: docker-compose.yml not found in repo root after git reset."
+              echo "Listing this directory:"
+              ls -la
               exit 1
             fi
 
