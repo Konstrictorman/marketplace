@@ -30,6 +30,9 @@ services:
     restart: unless-stopped
     ports:
       - "3001:3001"
+    # JWT_SECRET, JWT_EXPIRES_IN, CORS_ORIGIN, etc. — see apps/api/.env.example
+    env_file:
+      - apps/api/.env
     environment:
       NODE_ENV: production
       PORT: "3001"
@@ -53,6 +56,10 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: production
+      # Server-side BFF routes (e.g. POST /api/auth/login) must use the Compose service name —
+      # inside this container localhost:3001 is not the API. NEXT_PUBLIC_API_URL stays
+      # http://localhost:3001 for the browser on the host.
+      API_BASE_URL: http://api:3001
     depends_on:
       - api
 

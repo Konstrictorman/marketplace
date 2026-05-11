@@ -72,7 +72,9 @@ export default function LoginPage() {
         !callbackUrl.startsWith("/login")
           ? callbackUrl
           : "/";
-      router.replace(dest);
+      // Full navigation so the new page load always includes the session cookie set by the BFF
+      // (avoids client-router timing issues after `Set-Cookie` on the login XHR).
+      window.location.assign(dest);
     } catch (e: unknown) {
       const message = isApiError(e)
         ? e.message

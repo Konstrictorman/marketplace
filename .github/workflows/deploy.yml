@@ -17,13 +17,23 @@ jobs:
     steps:
       - name: Deploy over SSH
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
         with:
           host: ${{ secrets.AZ_VM_HOST }}
           username: ${{ secrets.AZ_VM_USER }}
           key: ${{ secrets.AZ_VM_SSH_KEY }}
+          envs: JWT_SECRET
           script_stop: true
           script: |
             set -e
+            export JWT_SECRET
+
+            if [ -z "$JWT_SECRET" ] || [ "${#JWT_SECRET}" -lt 32 ]; then
+              echo "JWT_SECRET must be set (GitHub secret) and at least 32 characters (see auth.service.ts)."
+              exit 1
+            fi
+
             APP_DIR="${{ secrets.AZ_VM_APP_DIR }}"
 
             if [ -z "$APP_DIR" ]; then
@@ -35,6 +45,17 @@ jobs:
             git fetch --all --prune
             git checkout master
             git reset --hard origin/master
+
+            # docker-compose reads apps/api/.env — merge JWT from GitHub (file is gitignored on the VM).
+            ENV_FILE="apps/api/.env"
+            mkdir -p apps/api
+            touch "$ENV_FILE"
+            if grep -q '^JWT_SECRET=' "$ENV_FILE" 2>/dev/null; then
+              grep -v '^JWT_SECRET=' "$ENV_FILE" >"${ENV_FILE}.tmp"
+              mv "${ENV_FILE}.tmp" "$ENV_FILE"
+            fi
+            printf 'JWT_SECRET=%s\n' "$JWT_SECRET" >>"$ENV_FILE"
+            chmod 600 "$ENV_FILE" || true
 
             docker compose up -d --build --remove-orphans
             docker compose ps

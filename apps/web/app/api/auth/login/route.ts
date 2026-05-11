@@ -1,5 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { AUTH_SESSION_COOKIE_NAME } from "@/lib/auth-session";
+import {
+  AUTH_SESSION_COOKIE_NAME,
+  isRequestHttps,
+} from "@/lib/auth-session";
 
 const API_BASE_URL =
   process.env.API_BASE_URL ??
@@ -105,7 +108,7 @@ export async function POST(request: NextRequest) {
     name: AUTH_SESSION_COOKIE_NAME,
     value: token,
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isRequestHttps(request),
     sameSite: "lax",
     path: "/",
     maxAge,
