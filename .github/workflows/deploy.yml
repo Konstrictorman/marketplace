@@ -56,22 +56,42 @@ jobs:
             git checkout master
             git reset --hard origin/master
 
-            # Add detailed debugging here
             echo "Current directory: $(pwd)"
-            echo "Listing contents:"
-            ls -la
-            echo "Checking if apps/api exists:"
-            ls -ld apps/api 2>&1 || echo "apps/api does not exist yet"
+
+            if [ ! -f docker-compose.yml ]; then
+              echo "ERROR: docker-compose.yml not found here — verify AZ_VM_APP_DIR points to the repo root."
+              exit 1
+            fi
 
             # docker-compose reads apps/api/.env — merge JWT from GitHub (file is gitignored on the VM).
-            ENV_FILE="apps/api/.env"
-            echo "Creating ENV_FILE at: $ENV_FILE"
-            mkdir -p apps/api || { echo "ERROR: mkdir -p apps/api failed"; exit 1; }
-            touch "$ENV_FILE" || { echo "ERROR: touch $ENV_FILE failed"; exit 1; }
+            API_DIR="apps/api"
+            ENV_FILE="$API_DIR/.env"
+
+            if [ ! -d "$API_DIR" ]; then
+              echo "Creating missing directory: $API_DIR"
+              mkdir -p "$API_DIR" || { echo "ERROR: mkdir -p $API_DIR failed"; exit 1; }
+            else
+              echo "Directory OK: $API_DIR"
+            fi
+
+            if [ ! -f "$ENV_FILE" ]; then
+              echo "Creating missing env file: $ENV_FILE"
+              touch "$ENV_FILE" || { echo "ERROR: touch $ENV_FILE failed"; exit 1; }
+            else
+              echo "Env file exists: $ENV_FILE"
+            fi
+
+            if [ ! -r "$ENV_FILE" ] || [ ! -w "$ENV_FILE" ]; then
+              echo "ERROR: $ENV_FILE is not readable/writable by this user (check ownership and permissions)."
+              ls -la "$API_DIR" || true
+              exit 1
+            fi
 
             if grep -q '^JWT_SECRET=' "$ENV_FILE" 2>/dev/null; then
               echo "Removing existing JWT_SECRET from $ENV_FILE"
-              grep -v '^JWT_SECRET=' "$ENV_FILE" >"${ENV_FILE}.tmp" || { echo "ERROR: grep -v failed"; exit 1; }
+              # sed (not grep -v): grep exits 1 when it would print zero lines, which breaks set -e
+              # when .env contained only JWT_SECRET=...
+              sed '/^JWT_SECRET=/d' "$ENV_FILE" >"${ENV_FILE}.tmp" || { echo "ERROR: sed strip JWT_SECRET failed"; exit 1; }
               mv "${ENV_FILE}.tmp" "$ENV_FILE" || { echo "ERROR: mv failed"; exit 1; }
             fi
 
@@ -79,7 +99,7 @@ jobs:
             printf 'JWT_SECRET=%s\n' "$JWT_SECRET" >>"$ENV_FILE" || { echo "ERROR: printf to $ENV_FILE failed"; exit 1; }
             chmod 600 "$ENV_FILE" || true
 
-            echo "ENV_FILE contents:"
+            echo "ENV_FILE contents (debug — contains secrets; remove this cat when done debugging):"
             cat "$ENV_FILE"
 
             docker compose up -d --build --remove-orphans
