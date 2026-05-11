@@ -1,0 +1,152 @@
+# Archived copy — NOT under .github/workflows/, so GitHub Actions will not run this file.
+# Use as reference when merging WEB_NEXT_PUBLIC_API_URL / sed / guards back into deploy.yml.
+name: Deploy to Azure VM
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-master
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
+          # Repository variable (Settings → Secrets and variables → Actions → Variables), not a secret.
+          WEB_NEXT_PUBLIC_API_URL: ${{ vars.WEB_NEXT_PUBLIC_API_URL }}
+          AZ_VM_APP_DIR: ${{ secrets.AZ_VM_APP_DIR }}
+        with:
+          host: ${{ secrets.AZ_VM_HOST }}
+          username: ${{ secrets.AZ_VM_USER }}
+          key: ${{ secrets.AZ_VM_SSH_KEY }}
+          # `env` above is on the runner; `envs` forwards these names into the remote shell (see appleboy/ssh-action).
+          envs: JWT_SECRET,WEB_NEXT_PUBLIC_API_URL,AZ_VM_APP_DIR
+          script_stop: true
+          script: |
+            set -e
+            export JWT_SECRET
+            export WEB_NEXT_PUBLIC_API_URL
+            export AZ_VM_APP_DIR
+
+            # One line only; strip CR — pasted secrets often include a trailing newline
+            AZ_VM_APP_DIR="$(printf '%s' "$AZ_VM_APP_DIR" | head -n1 | tr -d '\r')"
+            export AZ_VM_APP_DIR
+
+            echo "=== Validating secrets and variables ==="
+            echo "JWT_SECRET length: ${#JWT_SECRET}"
+            echo "WEB_NEXT_PUBLIC_API_URL: $WEB_NEXT_PUBLIC_API_URL"
+            echo "AZ_VM_APP_DIR set (non-empty): $([ -n "$AZ_VM_APP_DIR" ] && echo yes || echo no)"
+            echo "AZ_VM_APP_DIR is a directory on the VM: $([ -d "$AZ_VM_APP_DIR" ] && echo yes || echo no)"
+
+            if [ -z "$JWT_SECRET" ] || [ "${#JWT_SECRET}" -lt 32 ]; then
+              echo "ERROR: JWT_SECRET must be set and at least 32 characters"
+              exit 1
+            fi
+
+            if [ -z "$WEB_NEXT_PUBLIC_API_URL" ]; then
+              echo "ERROR: WEB_NEXT_PUBLIC_API_URL must be set"
+              exit 1
+            fi
+
+            if [ -z "$AZ_VM_APP_DIR" ]; then
+              echo "ERROR: Missing required secret: AZ_VM_APP_DIR"
+              exit 1
+            fi
+
+            if [ ! -d "$AZ_VM_APP_DIR" ]; then
+              echo "ERROR: AZ_VM_APP_DIR is not a directory on this VM: '$AZ_VM_APP_DIR'"
+              exit 1
+            fi
+
+            cd "$AZ_VM_APP_DIR"
+            git fetch --all --prune
+            git checkout master
+            git reset --hard origin/master
+
+            echo "Current directory: $(pwd)"
+
+            if [ ! -f docker-compose.yml ]; then
+              echo "ERROR: docker-compose.yml not found in repo root after git reset."
+              echo "Listing this directory:"
+              ls -la
+              exit 1
+            fi
+
+            # docker-compose reads apps/api/.env — merge JWT from GitHub (file is gitignored on the VM).
+            API_DIR="apps/api"
+            ENV_FILE="$API_DIR/.env"
+
+            if [ ! -d "$API_DIR" ]; then
+              echo "Creating missing directory: $API_DIR"
+              mkdir -p "$API_DIR" || { echo "ERROR: mkdir -p $API_DIR failed"; exit 1; }
+            else
+              echo "Directory OK: $API_DIR"
+            fi
+
+            if [ ! -f "$ENV_FILE" ]; then
+              echo "Creating missing env file: $ENV_FILE"
+              touch "$ENV_FILE" || { echo "ERROR: touch $ENV_FILE failed"; exit 1; }
+            else
+              echo "Env file exists: $ENV_FILE"
+            fi
+
+            if [ ! -r "$ENV_FILE" ] || [ ! -w "$ENV_FILE" ]; then
+              echo "ERROR: $ENV_FILE is not readable/writable by this user (check ownership and permissions)."
+              ls -la "$API_DIR" || true
+              exit 1
+            fi
+
+            if grep -q '^JWT_SECRET=' "$ENV_FILE" 2>/dev/null; then
+              echo "Removing existing JWT_SECRET from $ENV_FILE"
+              # sed (not grep -v): grep exits 1 when it would print zero lines, which breaks set -e
+              # when .env contained only JWT_SECRET=...
+              sed '/^JWT_SECRET=/d' "$ENV_FILE" >"${ENV_FILE}.tmp" || { echo "ERROR: sed strip JWT_SECRET failed"; exit 1; }
+              mv "${ENV_FILE}.tmp" "$ENV_FILE" || { echo "ERROR: mv failed"; exit 1; }
+            fi
+
+            echo "Adding JWT_SECRET to $ENV_FILE"
+            printf 'JWT_SECRET=%s\n' "$JWT_SECRET" >>"$ENV_FILE" || { echo "ERROR: printf to $ENV_FILE failed"; exit 1; }
+            chmod 600 "$ENV_FILE" || true
+
+            echo "ENV_FILE contents (debug — contains secrets; remove this cat when done debugging):"
+            cat "$ENV_FILE"
+
+            docker compose up -d --build --remove-orphans
+            docker compose ps
+
+            for i in $(seq 1 30); do
+              if curl -fsS http://localhost:3001/api/health/db >/dev/null; then
+                echo "API health check passed."
+                break
+              fi
+              if [ "$i" -eq 30 ]; then
+                echo "API health check failed after retries."
+                docker compose logs --tail=200 api
+                exit 1
+              fi
+              sleep 2
+            done
+
+            for i in $(seq 1 30); do
+              if curl -fsS http://localhost:3000 >/dev/null; then
+                echo "Web health check passed."
+                break
+              fi
+              if [ "$i" -eq 30 ]; then
+                echo "Web health check failed after retries."
+                docker compose logs --tail=200 web
+                exit 1
+              fi
+              sleep 2
+            done
+
+            echo "Deployment and smoke checks succeeded."
