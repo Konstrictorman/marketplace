@@ -1,8 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import {
-  AUTH_SESSION_COOKIE_NAME,
-  isRequestHttps,
-} from "@/lib/auth-session";
+import { AUTH_SESSION_COOKIE_NAME, isRequestHttps } from "@/lib/auth-session";
 
 const API_BASE_URL =
   process.env.API_BASE_URL ??
