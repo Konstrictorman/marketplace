@@ -1,17 +1,14 @@
 "use client";
 import { useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import { InputBase, Box, IconButton } from "@mui/material";
 
 export default function SearchBar() {
-  const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(searchParams.get("search") ?? "");
-
-  if (pathname !== "/shop") return null;
 
   const handleSeachClick = () => {
     if (search.trim()) {

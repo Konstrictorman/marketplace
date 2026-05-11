@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Avatar, Button } from "@mui/material";
+import { Avatar, Button, Skeleton } from "@mui/material";
 import ShoppingCart from "../ShoppingCart/ShoppingCart";
 import { getAuthSession, logout, type AuthSessionData } from "@/lib/api/auth";
 import NotificationsButton from "../NotificationsButton/NotificationsButton";
@@ -62,9 +62,22 @@ export default function NavBar() {
         Home
       </Button>
 
-      <Suspense fallback={null}>
-        <SearchBar />
+      <Suspense
+        fallback={
+          <Skeleton
+            variant="rounded"
+            width={400}
+            height={36}
+            sx={{
+              backgroundColor: "rgba(254, 254, 254, 0.15)",
+              borderRadius: "8px",
+            }}
+          />
+        }
+      >
+        {isshop && <SearchBar />}
       </Suspense>
+
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 
