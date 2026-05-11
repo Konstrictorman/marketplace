@@ -21,37 +21,43 @@ jobs:
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
           # Repository variable (Settings → Secrets and variables → Actions → Variables), not a secret.
           WEB_NEXT_PUBLIC_API_URL: ${{ vars.WEB_NEXT_PUBLIC_API_URL }}
+          AZ_VM_APP_DIR: ${{ secrets.AZ_VM_APP_DIR }}
         with:
           host: ${{ secrets.AZ_VM_HOST }}
           username: ${{ secrets.AZ_VM_USER }}
           key: ${{ secrets.AZ_VM_SSH_KEY }}
           # `env` above is on the runner; `envs` forwards these names into the remote shell (see appleboy/ssh-action).
-          envs: JWT_SECRET,WEB_NEXT_PUBLIC_API_URL
+          envs: JWT_SECRET,WEB_NEXT_PUBLIC_API_URL,AZ_VM_APP_DIR
           script_stop: true
           script: |
             set -e
             export JWT_SECRET
             export WEB_NEXT_PUBLIC_API_URL
+            export AZ_VM_APP_DIR
+
+            echo "=== Validating secrets and variables ==="
+            echo "JWT_SECRET length: ${#JWT_SECRET}"
+            echo "WEB_NEXT_PUBLIC_API_URL: $WEB_NEXT_PUBLIC_API_URL"
+            echo "AZ_VM_APP_DIR exists: $([ -n "$APP_DIR" ] && echo 'yes' || echo 'no')"
 
             if [ -z "$JWT_SECRET" ] || [ "${#JWT_SECRET}" -lt 32 ]; then
-              echo "JWT_SECRET must be set (GitHub secret) and at least 32 characters (see auth.service.ts)."
+              echo "ERROR: JWT_SECRET must be set and at least 32 characters"
               exit 1
             fi
 
             if [ -z "$WEB_NEXT_PUBLIC_API_URL" ]; then
-              echo "WEB_NEXT_PUBLIC_API_URL must be set (GitHub Actions repository variable) to the public API URL, e.g. http://YOUR_VM_IP:3001"
-              echo "See docker-compose.yml web.build.args and docker/web/Dockerfile NEXT_PUBLIC_API_URL."
+              echo "ERROR: WEB_NEXT_PUBLIC_API_URL must be set"
               exit 1
             fi
 
-            APP_DIR="${{ secrets.AZ_VM_APP_DIR }}"
-
-            if [ -z "$APP_DIR" ]; then
-              echo "Missing required secret: AZ_VM_APP_DIR"
+            if [ -z "$AZ_VM_APP_DIR" ]; then
+              echo "ERROR: Missing required secret: AZ_VM_APP_DIR"
               exit 1
             fi
 
-            cd "$APP_DIR"
+            echo "AZ_VM_APP_DIR: $AZ_VM_APP_DIR"
+
+            cd "$AZ_VM_APP_DIR"
             git fetch --all --prune
             git checkout master
             git reset --hard origin/master
