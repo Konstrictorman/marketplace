@@ -240,7 +240,8 @@ export const openApiDocument = {
                   sellerId: {
                     type: "string",
                     format: "uuid",
-                    description: "Uploader user id (interim auth until JWT on this route).",
+                    description:
+                      "Uploader user id (interim auth until JWT on this route).",
                   },
                   file: {
                     type: "string",
@@ -254,7 +255,8 @@ export const openApiDocument = {
         },
         responses: {
           "201": {
-            description: "Stored file; use returned URL with product image APIs",
+            description:
+              "Stored file; use returned URL with product image APIs",
             content: {
               "application/json": {
                 schema: {
@@ -279,7 +281,8 @@ export const openApiDocument = {
             },
           },
           "400": {
-            description: "Missing file, invalid `sellerId`, or multipart limits",
+            description:
+              "Missing file, invalid `sellerId`, or multipart limits",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },

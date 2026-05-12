@@ -18,8 +18,7 @@ export function getUploadDir(): string {
  * Files are served at `GET /uploads/:filename` on this host.
  */
 export function getPublicUploadUrlBase(): string {
-  const raw =
-    process.env.PUBLIC_UPLOAD_URL_BASE?.trim() ?? DEFAULT_PUBLIC_BASE;
+  const raw = process.env.PUBLIC_UPLOAD_URL_BASE?.trim() ?? DEFAULT_PUBLIC_BASE;
   return raw.replace(/\/$/, "");
 }
 

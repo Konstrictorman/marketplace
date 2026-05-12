@@ -157,11 +157,17 @@ export async function uploadProductImage(
     typeof (json as { data: unknown }).data !== "object" ||
     (json as { data: { url?: unknown } }).data === null
   ) {
-    throw { status: 500, message: "Respuesta de subida inválida" } satisfies ApiError;
+    throw {
+      status: 500,
+      message: "Respuesta de subida inválida",
+    } satisfies ApiError;
   }
   const url = (json as { data: { url?: unknown } }).data.url;
   if (typeof url !== "string") {
-    throw { status: 500, message: "Respuesta de subida inválida" } satisfies ApiError;
+    throw {
+      status: 500,
+      message: "Respuesta de subida inválida",
+    } satisfies ApiError;
   }
   return { url };
 }
