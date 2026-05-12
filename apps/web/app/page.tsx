@@ -35,7 +35,7 @@ export default function Home() {
           maxWidth: 400,
         }}
       >
-        ¿Qué quieres hacer hoy?
+        ¿Qué quieres hacer hoy? -> Probar que el despligue si funciona !!
       </Typography>
 
       {/* Buttons */}
