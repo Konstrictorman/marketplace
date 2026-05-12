@@ -8,7 +8,7 @@ export const openApiDocument = {
     title: "Marketplace API",
     version: "1.0.0",
     description:
-      "Express REST API (`apps/api`). **Swagger UI:** open `GET /docs` under the API base (e.g. `http://localhost:3001/api/docs`). **Raw spec:** `GET /docs/openapi.json`. JSON errors use `ApiErrorEnvelope` (`error.code`, `error.message`, optional `error.details`). **operationId** is stable for generated clients. Covers health, products & images, conversations & participants, orders, **roles**, **users**, **user_roles** (nested under `/users/{userId}/roles`), and **auth/login** (JWT issuance). **Browser HttpOnly sessions** are handled by the Next.js app (`apps/web`): it proxies `POST /auth/login` to this API, stores the JWT in cookie `mp_session`, and clears it via **`POST` or `GET` `/api/auth/logout` on the web origin** (not an Express route).",
+      "Express REST API (`apps/api`). **Swagger UI:** open `GET /docs` under the API base (e.g. `http://localhost:3001/api/docs`). **Raw spec:** `GET /docs/openapi.json`. JSON errors use `ApiErrorEnvelope` (`error.code`, `error.message`, optional `error.details`). **operationId** is stable for generated clients. Covers health, products & images, uploads (**`POST /uploads`** plus **`GET`/`HEAD` `/uploads/{filename}`** for stored files), conversations, participants, **messages** (list/create/get/patch/delete), orders, **roles**, **users**, **user_roles** (nested under `/users/{userId}/roles`), and **auth/login** (JWT issuance). **Browser HttpOnly sessions** are handled by the Next.js app (`apps/web`): it proxies `POST /auth/login` to this API, stores the JWT in cookie `mp_session`, and clears it via **`POST` or `GET` `/api/auth/logout` on the web origin** (not an Express route).",
   },
   servers: [
     {
@@ -41,12 +41,17 @@ export const openApiDocument = {
     {
       name: "Uploads",
       description:
-        "`POST /uploads` stores one image on disk (`UPLOAD_DIR`) and returns a public URL (`PUBLIC_UPLOAD_URL_BASE`). Pair with `POST /products/{productId}/images` to attach to a listing.",
+        "`POST /uploads` stores one image on disk (`UPLOAD_DIR`) and returns a public URL (`PUBLIC_UPLOAD_URL_BASE`). **`GET` / `HEAD` `/uploads/{filename}`** (under this spec’s `/api` server → `/api/uploads/...`) serves stored files; the app also mounts the same directory at host root `GET /uploads/{filename}` when not stripped by a proxy. Pair the upload URL with `POST /products/{productId}/images` to attach to a listing.",
     },
     {
       name: "Conversations",
       description:
         "Buyer/seller threads for a product (`userId`/`buyerId` in query/body until auth is wired)",
+    },
+    {
+      name: "Messages",
+      description:
+        "Rows in `messages` for a conversation. **List:** optional `userId` query returns only messages with that `senderId`; the conversation must exist (participant check is not enforced on list). **Get one:** optional `userId` requires the message’s `senderId` to match or yields `404`. **Patch:** `isRead` and optional `userId` (when set, that user must be a participant). **Delete:** JSON body with `userId` — must equal the message `senderId` or `403`.",
     },
     {
       name: "Orders",
@@ -228,7 +233,7 @@ export const openApiDocument = {
         tags: ["Uploads"],
         summary: "Upload one image file to disk",
         description:
-          "Multipart `multipart/form-data`: field **`file`** (image), field **`sellerId`** (UUID, must exist in `users`). Returns **`data.url`** suitable for `POST /products/{productId}/images` body. Files are stored under `UPLOAD_DIR` and served at `GET /uploads/{filename}` on the API host (`PUBLIC_UPLOAD_URL_BASE`). Max size 5 MiB; JPEG, PNG, WebP, GIF only.",
+          "Multipart `multipart/form-data`: field **`file`** (image), field **`sellerId`** (UUID, must exist in `users`). Returns **`data.url`** suitable for `POST /products/{productId}/images` body. Files are stored under `UPLOAD_DIR` and served via **`GET /uploads/{filename}`** (see that path in this document; also at host root `/uploads/...` per deployment). Max size 5 MiB; JPEG, PNG, WebP, GIF only.",
         requestBody: {
           required: true,
           content: {
@@ -312,6 +317,65 @@ export const openApiDocument = {
                 schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
               },
             },
+          },
+        },
+      },
+    },
+    "/uploads/{filename}": {
+      parameters: [
+        {
+          name: "filename",
+          in: "path",
+          required: true,
+          description:
+            "Stored file basename (as returned in `data.url` from `POST /uploads`, without query string).",
+          schema: {
+            type: "string",
+            example: "550e8400-e29b-41d4-a716-446655440000.jpg",
+          },
+        },
+      ],
+      get: {
+        operationId: "getUploadedFile",
+        tags: ["Uploads"],
+        summary: "Serve a stored upload file",
+        description:
+          "Static file from `UPLOAD_DIR`. Under the API app, this path is registered for **`GET`** and **`HEAD`** only at `/api/uploads/...` so **`POST /uploads`** remains the multipart upload route.",
+        responses: {
+          "200": {
+            description:
+              "Binary body; `Content-Type` reflects the file (typically `image/jpeg`, `image/png`, `image/webp`, or `image/gif`).",
+            content: {
+              "image/jpeg": {
+                schema: { type: "string", format: "binary" },
+              },
+              "image/png": {
+                schema: { type: "string", format: "binary" },
+              },
+              "image/webp": {
+                schema: { type: "string", format: "binary" },
+              },
+              "image/gif": {
+                schema: { type: "string", format: "binary" },
+              },
+            },
+          },
+          "404": {
+            description: "No file with that name under `UPLOAD_DIR`",
+          },
+        },
+      },
+      head: {
+        operationId: "headUploadedFile",
+        tags: ["Uploads"],
+        summary: "Headers for a stored upload (no body)",
+        description: "Same routing as `GET`; typical use is cache validation.",
+        responses: {
+          "200": {
+            description: "Success; body empty",
+          },
+          "404": {
+            description: "No file with that name under `UPLOAD_DIR`",
           },
         },
       },
@@ -1264,6 +1328,273 @@ export const openApiDocument = {
           },
           "409": {
             description: "Minimum participants required",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/conversations/{conversationId}/messages": {
+      parameters: [
+        {
+          name: "conversationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "listMessages",
+        tags: ["Messages"],
+        summary: "List messages in a conversation",
+        description:
+          "Paged by `sentAt`. The conversation must exist; **participant membership is not verified** on this route (interim behavior).",
+        parameters: [
+          {
+            name: "userId",
+            in: "query",
+            required: false,
+            schema: { type: "string", format: "uuid" },
+            description:
+              "Optional filter: when set, only messages whose `senderId` equals this value are returned.",
+          },
+          {
+            name: "page",
+            in: "query",
+            schema: { type: "integer", minimum: 1, default: 1 },
+          },
+          {
+            name: "pageSize",
+            in: "query",
+            schema: { type: "integer", minimum: 1, maximum: 100, default: 50 },
+          },
+          {
+            name: "sortOrder",
+            in: "query",
+            schema: { type: "string", enum: ["asc", "desc"], default: "asc" },
+            description: "Order by `sentAt`",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Paged messages",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/MessageListResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Conversation not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        operationId: "createMessage",
+        tags: ["Messages"],
+        summary: "Send a message in a conversation",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/MessageCreateBody" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Created",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/MessageResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed or empty content",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "Sender not a participant",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Conversation or sender not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/conversations/{conversationId}/messages/{messageId}": {
+      parameters: [
+        {
+          name: "conversationId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+        {
+          name: "messageId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "getMessage",
+        tags: ["Messages"],
+        summary: "Get one message",
+        parameters: [
+          {
+            name: "userId",
+            in: "query",
+            required: false,
+            schema: { type: "string", format: "uuid" },
+            description:
+              "Optional filter: when set, the message must have this `senderId` or the response is `404`.",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Message row",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/MessageResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description:
+              "Conversation not found, message not in conversation, or `userId` filter does not match `senderId`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      patch: {
+        operationId: "patchMessage",
+        tags: ["Messages"],
+        summary: "Update message read state",
+        description:
+          "Sets `isRead`. When `userId` is provided, that user must be a conversation participant (interim auth). When omitted, only the conversation must exist.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/MessagePatchBody" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Updated message",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/MessageResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "Not a participant",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Conversation or message not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        operationId: "deleteMessage",
+        tags: ["Messages"],
+        summary: "Delete a message",
+        description:
+          "`userId` must equal the message `senderId`; only the sender may delete.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/MessageDeleteBody" },
+            },
+          },
+        },
+        responses: {
+          "204": {
+            description: "No body",
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description: "`userId` does not match message sender",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "Conversation or message not found",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
@@ -3139,6 +3470,70 @@ export const openApiDocument = {
           "`actorUserId` is the requester identity used for authorization until JWT/session auth is wired.",
         properties: {
           actorUserId: { type: "string", format: "uuid" },
+        },
+      },
+      Message: {
+        type: "object",
+        required: [
+          "id",
+          "conversationId",
+          "senderId",
+          "content",
+          "sentAt",
+          "isRead",
+        ],
+        properties: {
+          id: { type: "string", format: "uuid" },
+          conversationId: { type: "string", format: "uuid" },
+          senderId: { type: "string", format: "uuid" },
+          content: { type: "string" },
+          sentAt: { type: "string", format: "date-time" },
+          isRead: { type: "boolean" },
+        },
+      },
+      MessageResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: { $ref: "#/components/schemas/Message" },
+        },
+      },
+      MessageListResponse: {
+        type: "object",
+        required: ["data", "meta"],
+        properties: {
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Message" },
+          },
+          meta: { $ref: "#/components/schemas/PaginationMeta" },
+        },
+      },
+      MessageCreateBody: {
+        type: "object",
+        required: ["senderId", "content"],
+        properties: {
+          senderId: { type: "string", format: "uuid" },
+          content: { type: "string", minLength: 1, maxLength: 20000 },
+        },
+      },
+      MessagePatchBody: {
+        type: "object",
+        required: ["isRead"],
+        description:
+          "Optional `userId`: when present, that user must be a conversation participant (interim auth). When omitted, only the conversation must exist.",
+        properties: {
+          userId: { type: "string", format: "uuid" },
+          isRead: { type: "boolean" },
+        },
+      },
+      MessageDeleteBody: {
+        type: "object",
+        required: ["userId"],
+        description:
+          "Must match the message `senderId`; only that user may delete the row.",
+        properties: {
+          userId: { type: "string", format: "uuid" },
         },
       },
     },
