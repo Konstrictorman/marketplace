@@ -25,7 +25,6 @@ import {
   createProductImage,
   uploadProductImage,
 } from "@/lib/api/products";
-import { MARKETPLACE_CATEGORIES } from "@/lib/marketplace-categories";
 
 const moneyPattern = /^\d+(\.\d{1,2})?$/;
 
@@ -75,11 +74,13 @@ function PublishProductFormModal({
   open,
   onClose,
   sellerId,
+  categories,
   onPublishSuccess,
 }: {
   open: boolean;
   onClose: () => void;
   sellerId: string;
+  categories: { id: string; name: string }[];
   onPublishSuccess?: () => void;
 }) {
   const router = useRouter();
@@ -198,7 +199,7 @@ function PublishProductFormModal({
                   <MenuItem value="" disabled>
                     Selecciona…
                   </MenuItem>
-                  {MARKETPLACE_CATEGORIES.map((c) => (
+                  {categories.map((c) => (
                     <MenuItem key={c.id} value={c.id}>
                       {c.name}
                     </MenuItem>
@@ -384,16 +385,29 @@ function PublishProductFormModal({
   );
 }
 
-export function PublishProductButton({ sellerId }: { sellerId: string }) {
+export function PublishProductButton({
+  sellerId,
+  categories,
+}: {
+  sellerId: string;
+  categories: { id: string; name: string }[];
+}) {
   const [open, setOpen] = useState(false);
   const [successToastOpen, setSuccessToastOpen] = useState(false);
+  const canPublish = categories.length > 0;
 
   return (
     <>
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+        disabled={!canPublish}
+        title={
+          canPublish
+            ? undefined
+            : "No hay categorías activas. Crea categorías en la base de datos o revisa la API."
+        }
+        className="rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-zinc-400"
       >
         Publicar nuevo producto
       </button>
@@ -401,6 +415,7 @@ export function PublishProductButton({ sellerId }: { sellerId: string }) {
         open={open}
         onClose={() => setOpen(false)}
         sellerId={sellerId}
+        categories={categories}
         onPublishSuccess={() => setSuccessToastOpen(true)}
       />
       <Snackbar

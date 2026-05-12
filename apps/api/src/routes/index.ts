@@ -1,5 +1,6 @@
 import { Router } from "express";
 import authRoutes from "./auth.routes.js";
+import categoriesRoutes from "./categories.routes.js";
 import conversationParticipantsRoutes from "./conversation-participants.routes.js";
 import conversationsRoutes from "./conversations.routes.js";
 import docsRoutes from "./docs.routes.js";
@@ -23,6 +24,7 @@ rootRouter.use("/docs", docsRoutes);
 rootRouter.use(healthRoutes);
 rootRouter.use(uploadsRoutes);
 rootRouter.use(authRoutes);
+rootRouter.use(categoriesRoutes);
 rootRouter.use(ordersRoutes);
 rootRouter.use(conversationParticipantsRoutes);
 rootRouter.use(conversationsRoutes);
