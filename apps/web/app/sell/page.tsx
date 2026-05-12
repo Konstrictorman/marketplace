@@ -79,7 +79,7 @@ export default async function SellPage({
   try {
     const cat = await listCategories({
       page: 1,
-      pageSize: 200,
+      pageSize: 100,
       isActive: true,
     });
     publishCategories = cat.data.map(({ id, name }) => ({ id, name }));
