@@ -39,6 +39,11 @@ export const openApiDocument = {
         "Gallery URLs per product (`sellerId` in body enforced until auth is wired)",
     },
     {
+      name: "Uploads",
+      description:
+        "`POST /uploads` stores one image on disk (`UPLOAD_DIR`) and returns a public URL (`PUBLIC_UPLOAD_URL_BASE`). Pair with `POST /products/{productId}/images` to attach to a listing.",
+    },
+    {
       name: "Conversations",
       description:
         "Buyer/seller threads for a product (`userId`/`buyerId` in query/body until auth is wired)",
@@ -208,6 +213,97 @@ export const openApiDocument = {
           "503": {
             description:
               "`auth_misconfigured` (e.g. missing `JWT_SECRET` in production)",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/uploads": {
+      post: {
+        operationId: "uploadProductImageFile",
+        tags: ["Uploads"],
+        summary: "Upload one image file to disk",
+        description:
+          "Multipart `multipart/form-data`: field **`file`** (image), field **`sellerId`** (UUID, must exist in `users`). Returns **`data.url`** suitable for `POST /products/{productId}/images` body. Files are stored under `UPLOAD_DIR` and served at `GET /uploads/{filename}` on the API host (`PUBLIC_UPLOAD_URL_BASE`). Max size 5 MiB; JPEG, PNG, WebP, GIF only.",
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                required: ["sellerId", "file"],
+                properties: {
+                  sellerId: {
+                    type: "string",
+                    format: "uuid",
+                    description: "Uploader user id (interim auth until JWT on this route).",
+                  },
+                  file: {
+                    type: "string",
+                    format: "binary",
+                    description: "Image file",
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Stored file; use returned URL with product image APIs",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  required: ["data"],
+                  properties: {
+                    data: {
+                      type: "object",
+                      required: ["url"],
+                      properties: {
+                        url: {
+                          type: "string",
+                          format: "uri",
+                          example:
+                            "http://localhost:3001/uploads/550e8400-e29b-41d4-a716-446655440000.jpg",
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Missing file, invalid `sellerId`, or multipart limits",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`user_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "413": {
+            description: "`file_too_large`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "415": {
+            description: "`unsupported_media_type`",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
@@ -2732,7 +2828,8 @@ export const openApiDocument = {
       },
       ProductSummary: {
         type: "object",
-        description: "List row (no `description`)",
+        description:
+          "List row (no `description`). `mainImageUrl` is the primary gallery image (`isMain` preferred, else first by `sortOrder`).",
         required: [
           "id",
           "sellerId",
@@ -2744,6 +2841,7 @@ export const openApiDocument = {
           "status",
           "createdAt",
           "updatedAt",
+          "mainImageUrl",
         ],
         properties: {
           id: { type: "string", format: "uuid" },
@@ -2759,6 +2857,13 @@ export const openApiDocument = {
           status: { $ref: "#/components/schemas/ProductStatus" },
           createdAt: { type: "string", format: "date-time" },
           updatedAt: { type: "string", format: "date-time" },
+          mainImageUrl: {
+            type: "string",
+            format: "uri",
+            nullable: true,
+            description:
+              "Public image URL when the product has images; otherwise `null`.",
+          },
         },
       },
       ProductDetail: {
@@ -2776,6 +2881,7 @@ export const openApiDocument = {
           "status",
           "createdAt",
           "updatedAt",
+          "mainImageUrl",
         ],
         properties: {
           id: { type: "string", format: "uuid" },
@@ -2789,6 +2895,13 @@ export const openApiDocument = {
           status: { $ref: "#/components/schemas/ProductStatus" },
           createdAt: { type: "string", format: "date-time" },
           updatedAt: { type: "string", format: "date-time" },
+          mainImageUrl: {
+            type: "string",
+            format: "uri",
+            nullable: true,
+            description:
+              "Primary list image (`isMain` preferred, else first by `sortOrder`).",
+          },
         },
       },
       ProductListResponse: {

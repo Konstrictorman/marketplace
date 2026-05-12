@@ -24,6 +24,6 @@ export function mapProductListItemToCardProduct(
     stock: p.inventory,
     rating: 0,
     condition,
-    image: PLACEHOLDER_IMAGE,
+    image: p.mainImageUrl ?? PLACEHOLDER_IMAGE,
   };
 }

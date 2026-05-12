@@ -31,7 +31,7 @@ type ProductRow = {
   updatedAt: Date;
 };
 
-function mapProduct(product: ProductRow) {
+function mapProduct(product: ProductRow, mainImageUrl: string | null = null) {
   return {
     id: product.id,
     sellerId: product.sellerId,
@@ -44,6 +44,7 @@ function mapProduct(product: ProductRow) {
     status: product.status,
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
+    mainImageUrl,
   };
 }
 
@@ -58,10 +59,12 @@ type ProductListRow = {
   status: ProductStatus;
   createdAt: Date;
   updatedAt: Date;
+  images: { url: string }[];
 };
 
 /** List payloads omit heavy `description` (use GET by id when needed). */
 function mapProductListItem(row: ProductListRow) {
+  const mainImageUrl = row.images[0]?.url ?? null;
   return {
     id: row.id,
     sellerId: row.sellerId,
@@ -73,6 +76,7 @@ function mapProductListItem(row: ProductListRow) {
     status: row.status,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    mainImageUrl,
   };
 }
 
@@ -150,7 +154,16 @@ export async function listProducts(params: ListProductsParams) {
     status: true,
     createdAt: true,
     updatedAt: true,
-  } as const;
+    images: {
+      orderBy: [
+        { isMain: Prisma.SortOrder.desc },
+        { sortOrder: Prisma.SortOrder.asc },
+        { createdAt: Prisma.SortOrder.asc },
+      ],
+      take: 1,
+      select: { url: true },
+    },
+  };
 
   const [rows, total] = await prisma.$transaction([
     prisma.product.findMany({
@@ -210,15 +223,29 @@ export async function createProduct(input: CreateProductInput) {
     },
   });
 
-  return mapProduct(product);
+  return mapProduct(product, null);
 }
 
 export async function getProductById(id: string) {
-  const product = await prisma.product.findUnique({ where: { id } });
+  const product = await prisma.product.findUnique({
+    where: { id },
+    include: {
+      images: {
+        orderBy: [
+          { isMain: Prisma.SortOrder.desc },
+          { sortOrder: Prisma.SortOrder.asc },
+          { createdAt: Prisma.SortOrder.asc },
+        ],
+        take: 1,
+        select: { url: true },
+      },
+    },
+  });
   if (!product) {
     throw new HttpError(404, "Product not found", "product_not_found");
   }
-  return mapProduct(product);
+  const { images, ...rest } = product;
+  return mapProduct(rest, images[0]?.url ?? null);
 }
 
 export type UpdateProductInput = {
@@ -287,9 +314,21 @@ export async function updateProduct(input: UpdateProductInput) {
   const product = await prisma.product.update({
     where: { id: input.id },
     data,
+    include: {
+      images: {
+        orderBy: [
+          { isMain: Prisma.SortOrder.desc },
+          { sortOrder: Prisma.SortOrder.asc },
+          { createdAt: Prisma.SortOrder.asc },
+        ],
+        take: 1,
+        select: { url: true },
+      },
+    },
   });
 
-  return mapProduct(product);
+  const { images, ...rest } = product;
+  return mapProduct(rest, images[0]?.url ?? null);
 }
 
 /** Soft delete: set `status` to `removed`. Idempotent when already removed. */

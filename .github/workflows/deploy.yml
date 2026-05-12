@@ -23,23 +23,28 @@ jobs:
           WEB_NEXT_PUBLIC_API_URL: ${{ vars.WEB_NEXT_PUBLIC_API_URL }}
           # Comma-separated browser origins allowed by Express CORS (e.g. http://YOUR_VM_IP:3000).
           CORS_ORIGIN: ${{ vars.CORS_ORIGIN }}
+          # Host path bind-mounted to /data/uploads in the API container (see docker-compose.yml).
+          MARKETPLACE_UPLOADS_HOST_PATH: ${{ vars.MARKETPLACE_UPLOADS_HOST_PATH }}
         with:
           host: ${{ secrets.AZ_VM_HOST }}
           username: ${{ secrets.AZ_VM_USER }}
           key: ${{ secrets.AZ_VM_SSH_KEY }}
-          envs: JWT_SECRET,WEB_NEXT_PUBLIC_API_URL,CORS_ORIGIN
+          envs: JWT_SECRET,WEB_NEXT_PUBLIC_API_URL,CORS_ORIGIN,MARKETPLACE_UPLOADS_HOST_PATH
           script_stop: true
           script: |
             set -e
             export JWT_SECRET
             export WEB_NEXT_PUBLIC_API_URL
             export CORS_ORIGIN
+            export MARKETPLACE_UPLOADS_HOST_PATH
 
             # Strip accidental newlines/CR from pasted repository variables
             WEB_NEXT_PUBLIC_API_URL="$(printf '%s' "$WEB_NEXT_PUBLIC_API_URL" | head -n1 | tr -d '\r')"
             export WEB_NEXT_PUBLIC_API_URL
             CORS_ORIGIN="$(printf '%s' "$CORS_ORIGIN" | head -n1 | tr -d '\r')"
             export CORS_ORIGIN
+            MARKETPLACE_UPLOADS_HOST_PATH="$(printf '%s' "$MARKETPLACE_UPLOADS_HOST_PATH" | head -n1 | tr -d '\r')"
+            export MARKETPLACE_UPLOADS_HOST_PATH
 
             if [ -z "$JWT_SECRET" ] || [ "${#JWT_SECRET}" -lt 32 ]; then
               echo "JWT_SECRET must be set (GitHub secret) and at least 32 characters (see auth.service.ts)."
@@ -55,6 +60,16 @@ jobs:
               echo "ERROR: Set repository variable CORS_ORIGIN (e.g. http://YOUR_VM_IP:3000). Comma-separated for multiple origins. Required for API CORS in production (see apps/api/src/config/cors.ts)."
               exit 1
             fi
+
+            if [ -z "$MARKETPLACE_UPLOADS_HOST_PATH" ]; then
+              echo "ERROR: Set repository variable MARKETPLACE_UPLOADS_HOST_PATH (absolute host path for uploads, bind-mounted to /data/uploads in the API container)."
+              exit 1
+            fi
+
+            # Stored image URLs use this prefix; keep in sync with WEB_NEXT_PUBLIC_API_URL (same origin as the public API).
+            WEB_NEXT_PUBLIC_API_URL="${WEB_NEXT_PUBLIC_API_URL%/}"
+            PUBLIC_UPLOAD_URL_BASE="${WEB_NEXT_PUBLIC_API_URL}/uploads"
+            export PUBLIC_UPLOAD_URL_BASE
 
             APP_DIR="${{ secrets.AZ_VM_APP_DIR }}"
 
@@ -86,6 +101,20 @@ jobs:
             printf 'JWT_SECRET=%s\n' "$JWT_SECRET" >>"$ENV_FILE"
             printf 'CORS_ORIGIN=%s\n' "$CORS_ORIGIN" >>"$ENV_FILE"
             chmod 600 "$ENV_FILE" || true
+
+            # docker-compose reads project `.env` for ${MARKETPLACE_UPLOADS_HOST_PATH} and ${PUBLIC_UPLOAD_URL_BASE} interpolation.
+            ROOT_ENV=".env"
+            touch "$ROOT_ENV"
+            for key in MARKETPLACE_UPLOADS_HOST_PATH PUBLIC_UPLOAD_URL_BASE; do
+              if grep -q "^${key}=" "$ROOT_ENV" 2>/dev/null; then
+                echo "Removing existing ${key} from $ROOT_ENV"
+                grep -v "^${key}=" "$ROOT_ENV" >"${ROOT_ENV}.tmp" || true
+                mv "${ROOT_ENV}.tmp" "$ROOT_ENV" || { echo "ERROR: mv failed ($ROOT_ENV)"; exit 1; }
+              fi
+            done
+            printf 'MARKETPLACE_UPLOADS_HOST_PATH=%s\n' "$MARKETPLACE_UPLOADS_HOST_PATH" >>"$ROOT_ENV"
+            printf 'PUBLIC_UPLOAD_URL_BASE=%s\n' "$PUBLIC_UPLOAD_URL_BASE" >>"$ROOT_ENV"
+            chmod 600 "$ROOT_ENV" || true
 
             docker compose up -d --build --remove-orphans
             docker compose ps

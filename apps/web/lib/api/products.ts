@@ -1,3 +1,4 @@
+import type { ApiError } from "@/lib/api/client";
 import { apiClient } from "@/lib/api/client";
 
 export type PaginationMeta = {
@@ -21,6 +22,8 @@ export type ProductListItem = {
   status: ProductStatus;
   createdAt: string;
   updatedAt: string;
+  /** Resolved gallery image: `isMain` first, else lowest `sortOrder`. */
+  mainImageUrl: string | null;
 };
 
 export type Product = ProductListItem & {
@@ -108,6 +111,59 @@ export async function createProduct(body: CreateProductBody) {
     body,
   );
   return data;
+}
+
+/**
+ * `POST /api/uploads` (multipart). Uses `fetch` so `Content-Type` is not forced to JSON
+ * (see default headers on {@link apiClient}).
+ */
+export async function uploadProductImage(
+  sellerId: string,
+  file: File,
+): Promise<{ url: string }> {
+  const baseUrl = (
+    process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001"
+  ).replace(/\/$/, "");
+  const formData = new FormData();
+  formData.append("sellerId", sellerId);
+  formData.append("file", file);
+
+  const res = await fetch(`${baseUrl}/api/uploads`, {
+    method: "POST",
+    body: formData,
+  });
+
+  const json: unknown = await res.json().catch(() => null);
+  if (!res.ok) {
+    let message = res.statusText || "Error al subir la imagen";
+    if (
+      json &&
+      typeof json === "object" &&
+      "error" in json &&
+      json.error !== null &&
+      typeof (json as { error: unknown }).error === "object"
+    ) {
+      const em = (json as { error: { message?: string } }).error.message;
+      if (typeof em === "string") message = em;
+    }
+    const err = { status: res.status, message } satisfies ApiError;
+    throw err;
+  }
+
+  if (
+    !json ||
+    typeof json !== "object" ||
+    !("data" in json) ||
+    typeof (json as { data: unknown }).data !== "object" ||
+    (json as { data: { url?: unknown } }).data === null
+  ) {
+    throw { status: 500, message: "Respuesta de subida inválida" } satisfies ApiError;
+  }
+  const url = (json as { data: { url?: unknown } }).data.url;
+  if (typeof url !== "string") {
+    throw { status: 500, message: "Respuesta de subida inválida" } satisfies ApiError;
+  }
+  return { url };
 }
 
 export async function getProductById(id: string) {

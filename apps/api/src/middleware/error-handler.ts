@@ -1,5 +1,6 @@
 import { Prisma } from "@marketplace/database";
 import type { ErrorRequestHandler, RequestHandler } from "express";
+import multer from "multer";
 import { HttpError } from "../lib/http-errors.js";
 import { ValidationError } from "../lib/validation-error.js";
 import { ZodError } from "zod";
@@ -57,6 +58,39 @@ export const errorHandler: ErrorRequestHandler = (
         code: err.code,
         message: err.message,
         ...(err.details !== undefined ? { details: err.details } : {}),
+      },
+    });
+    return;
+  }
+
+  if (err instanceof multer.MulterError) {
+    if (err.code === "LIMIT_FILE_SIZE") {
+      res.status(413).json({
+        error: {
+          code: "file_too_large",
+          message: "Uploaded file exceeds the maximum allowed size",
+        },
+      });
+      return;
+    }
+    if (
+      err.code === "LIMIT_UNEXPECTED_FILE" ||
+      err.code === "LIMIT_FILE_COUNT"
+    ) {
+      res.status(400).json({
+        error: {
+          code: "invalid_multipart",
+          message:
+            'Use a single file field named "file" plus form field "sellerId"',
+        },
+      });
+      return;
+    }
+    res.status(400).json({
+      error: {
+        code: err.code.toLowerCase(),
+        message: err.message,
+        ...(err.field !== undefined ? { details: { field: err.field } } : {}),
       },
     });
     return;

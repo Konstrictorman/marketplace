@@ -19,6 +19,8 @@ type ProductCardProps = {
 
 const ProductCard = ({ product }: ProductCardProps) => {
   const [open, setOpen] = useState(false);
+
+  console.log("product", JSON.stringify(product, null, 2));
   return (
     <>
       <Card

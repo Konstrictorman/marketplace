@@ -1,6 +1,20 @@
 import axios, { AxiosError, isAxiosError } from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+/**
+ * Browser: must use a URL reachable from the client (`NEXT_PUBLIC_API_URL`).
+ * Server (RSC, Route Handlers, etc.): prefer `API_BASE_URL` so Docker can use the Compose service name (`http://api:3001`).
+ */
+function getExpressApiBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
+  }
+  return (
+    process.env.API_BASE_URL ??
+    process.env.NEXT_PUBLIC_API_URL ??
+    "http://localhost:3001"
+  );
+}
+
 const DEFAULT_TIMEOUT_MS = 10_000;
 
 export type ApiError = {
@@ -68,9 +82,9 @@ function attachApiErrorInterceptor(instance: ReturnType<typeof axios.create>) {
   );
 }
 
-/** Express API (`NEXT_PUBLIC_API_URL`). */
+/** Express API: `API_BASE_URL` on server (Docker), `NEXT_PUBLIC_API_URL` in the browser. */
 export const apiClient = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: getExpressApiBaseUrl(),
   timeout: DEFAULT_TIMEOUT_MS,
   headers: {
     "Content-Type": "application/json",

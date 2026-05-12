@@ -37,8 +37,17 @@ services:
       NODE_ENV: production
       PORT: "3001"
       DATABASE_URL: postgresql://marketplace:marketplace@postgres:5432/marketplace?schema=public
+      # Writable mount — see docker-compose volumes and MARKETPLACE_UPLOADS_HOST_PATH in root `.env`.
+      UPLOAD_DIR: /data/uploads
+      # Browser-facing prefix for stored image URLs (set in root `.env` on the VM).
+      PUBLIC_UPLOAD_URL_BASE: ${PUBLIC_UPLOAD_URL_BASE:-http://localhost:3001/uploads}
       # Optional: allow Next.js dev origin when hitting API from the host browser.
       # CORS_ORIGIN: "http://localhost:3000"
+
+    volumes:
+      # Product files live on the host so recreating the container does not delete them.
+      # VM: set MARKETPLACE_UPLOADS_HOST_PATH=/home/azureuser/marketplace/uploads in `.env` next to this file.
+      - ${MARKETPLACE_UPLOADS_HOST_PATH:-./data/uploads}:/data/uploads
 
     depends_on:
       postgres:

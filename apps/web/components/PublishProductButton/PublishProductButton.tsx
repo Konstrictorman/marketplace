@@ -6,6 +6,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
+  Alert,
   Box,
   Button,
   FormControl,
@@ -14,11 +15,16 @@ import {
   MenuItem,
   Modal,
   Select,
+  Snackbar,
   TextField,
   Typography,
 } from "@mui/material";
 import type { ApiError } from "@/lib/api/client";
-import { createProduct } from "@/lib/api/products";
+import {
+  createProduct,
+  createProductImage,
+  uploadProductImage,
+} from "@/lib/api/products";
 import { MARKETPLACE_CATEGORIES } from "@/lib/marketplace-categories";
 
 const moneyPattern = /^\d+(\.\d{1,2})?$/;
@@ -69,13 +75,16 @@ function PublishProductFormModal({
   open,
   onClose,
   sellerId,
+  onPublishSuccess,
 }: {
   open: boolean;
   onClose: () => void;
   sellerId: string;
+  onPublishSuccess?: () => void;
 }) {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
 
   const {
     control,
@@ -90,6 +99,7 @@ function PublishProductFormModal({
 
   const closeModal = useCallback(() => {
     reset(defaultValues);
+    setImageFiles([]);
     setSubmitError(null);
     onClose();
   }, [onClose, reset]);
@@ -97,7 +107,7 @@ function PublishProductFormModal({
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null);
     try {
-      await createProduct({
+      const created = await createProduct({
         sellerId,
         categoryId: values.categoryId,
         title: values.title,
@@ -107,8 +117,27 @@ function PublishProductFormModal({
         inventory: values.inventory,
         status: values.status,
       });
+
+      const productId = created.data.id;
+      const urls: string[] = [];
+
+      for (const file of imageFiles) {
+        const { url } = await uploadProductImage(sellerId, file);
+        urls.push(url);
+      }
+
+      for (let i = 0; i < urls.length; i++) {
+        await createProductImage(productId, {
+          sellerId,
+          url: urls[i]!,
+          sortOrder: i,
+          isMain: i === 0,
+        });
+      }
+
       closeModal();
       router.refresh();
+      onPublishSuccess?.();
     } catch (e) {
       const err = e as ApiError;
       setSubmitError(err.message ?? "No se pudo crear el producto.");
@@ -218,7 +247,6 @@ function PublishProductFormModal({
                 <Select {...field} labelId="condition-label" label="Condición">
                   <MenuItem value="new">Nuevo</MenuItem>
                   <MenuItem value="used">Usado</MenuItem>
-                  <MenuItem value="refurbished">Reacondicionado</MenuItem>
                 </Select>
               )}
             />
@@ -255,6 +283,66 @@ function PublishProductFormModal({
             />
             {errors.status?.message ? (
               <FormHelperText>{errors.status.message}</FormHelperText>
+            ) : null}
+          </FormControl>
+
+          <FormControl fullWidth>
+            <Typography
+              variant="body2"
+              sx={{ mb: 0.5, fontWeight: 600, color: "rgb(0, 28, 100)" }}
+            >
+              Imágenes (opcional)
+            </Typography>
+            <Button
+              variant="outlined"
+              component="label"
+              disabled={isSubmitting}
+              sx={{
+                alignSelf: "flex-start",
+                textTransform: "none",
+                borderRadius: "10px",
+              }}
+            >
+              Elegir archivos
+              <input
+                id="publish-product-images"
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                hidden
+                onChange={(e) => {
+                  setImageFiles(Array.from(e.target.files ?? []));
+                }}
+              />
+            </Button>
+            <FormHelperText>
+              JPEG, PNG, WebP o GIF. La primera será la imagen principal.
+              {imageFiles.length > 0
+                ? ` · ${imageFiles.length} seleccionada(s)`
+                : ""}
+            </FormHelperText>
+            {imageFiles.length > 0 ? (
+              <Box
+                component="ul"
+                sx={{
+                  mt: 1,
+                  pl: 2,
+                  mb: 0,
+                  maxHeight: 120,
+                  overflow: "auto",
+                  fontSize: "0.8125rem",
+                  color: "text.secondary",
+                }}
+              >
+                {imageFiles.map((f, idx) => (
+                  <Box
+                    component="li"
+                    key={`${f.name}-${f.size}-${f.lastModified}-${idx}`}
+                  >
+                    {f.name}
+                  </Box>
+                ))}
+              </Box>
             ) : null}
           </FormControl>
 
@@ -298,6 +386,7 @@ function PublishProductFormModal({
 
 export function PublishProductButton({ sellerId }: { sellerId: string }) {
   const [open, setOpen] = useState(false);
+  const [successToastOpen, setSuccessToastOpen] = useState(false);
 
   return (
     <>
@@ -312,7 +401,26 @@ export function PublishProductButton({ sellerId }: { sellerId: string }) {
         open={open}
         onClose={() => setOpen(false)}
         sellerId={sellerId}
+        onPublishSuccess={() => setSuccessToastOpen(true)}
       />
+      <Snackbar
+        open={successToastOpen}
+        autoHideDuration={3000}
+        onClose={(_event, reason) => {
+          if (reason === "clickaway") return;
+          setSuccessToastOpen(false);
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSuccessToastOpen(false)}
+          severity="success"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          Product added successfully
+        </Alert>
+      </Snackbar>
     </>
   );
 }
