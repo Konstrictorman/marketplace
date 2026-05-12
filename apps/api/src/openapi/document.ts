@@ -8,7 +8,7 @@ export const openApiDocument = {
     title: "Marketplace API",
     version: "1.0.0",
     description:
-      "Express REST API (`apps/api`). **Swagger UI:** open `GET /docs` under the API base (e.g. `http://localhost:3001/api/docs`). **Raw spec:** `GET /docs/openapi.json`. JSON errors use `ApiErrorEnvelope` (`error.code`, `error.message`, optional `error.details`). **operationId** is stable for generated clients. Covers health, products & images, uploads (**`POST /uploads`** plus **`GET`/`HEAD` `/uploads/{filename}`** for stored files), conversations, participants, **messages** (list/create/get/patch/delete), orders, **roles**, **users**, **user_roles** (nested under `/users/{userId}/roles`), and **auth/login** (JWT issuance). **Browser HttpOnly sessions** are handled by the Next.js app (`apps/web`): it proxies `POST /auth/login` to this API, stores the JWT in cookie `mp_session`, and clears it via **`POST` or `GET` `/api/auth/logout` on the web origin** (not an Express route).",
+      "Express REST API (`apps/api`). **Swagger UI:** open `GET /docs` under the API base (e.g. `http://localhost:3001/api/docs`). **Raw spec:** `GET /docs/openapi.json`. JSON errors use `ApiErrorEnvelope` (`error.code`, `error.message`, optional `error.details`). **operationId** is stable for generated clients. Covers health, **categories**, products & images, uploads (**`POST /uploads`** plus **`GET`/`HEAD` `/uploads/{filename}`** for stored files), conversations, participants, **messages** (list/create/get/patch/delete), orders, **roles**, **users**, **user_roles** (nested under `/users/{userId}/roles`), and **auth/login** (JWT issuance). **Browser HttpOnly sessions** are handled by the Next.js app (`apps/web`): it proxies `POST /auth/login` to this API, stores the JWT in cookie `mp_session`, and clears it via **`POST` or `GET` `/api/auth/logout` on the web origin** (not an Express route).",
   },
   servers: [
     {
@@ -31,7 +31,13 @@ export const openApiDocument = {
     },
     {
       name: "Products",
-      description: "Product catalog CRUD & search",
+      description:
+        "Product catalog CRUD & search. Each product’s `categoryId` must reference an existing category (see **Categories**).",
+    },
+    {
+      name: "Categories",
+      description:
+        "Product taxonomy (`categories` table: `name` unique to 100 chars, optional `description`, `is_active` default true, `created_at`). JSON uses camelCase (`isActive`, `createdAt`). List supports `isActive=true|false`, optional `q` on `name`, pagination. **Delete** returns `category_in_use` (`409`) while any product references the row (FK `ON DELETE RESTRICT`).",
     },
     {
       name: "Product images",
@@ -2176,6 +2182,220 @@ export const openApiDocument = {
         },
       },
     },
+    "/categories": {
+      get: {
+        operationId: "listCategories",
+        tags: ["Categories"],
+        summary: "List categories",
+        description:
+          "Ordered by `name` ascending. Filter active rows with `isActive=true` (typical for storefront pickers).",
+        parameters: [
+          {
+            name: "page",
+            in: "query",
+            schema: { type: "integer", minimum: 1, default: 1 },
+          },
+          {
+            name: "pageSize",
+            in: "query",
+            schema: { type: "integer", minimum: 1, maximum: 100, default: 20 },
+          },
+          {
+            name: "q",
+            in: "query",
+            description: "Case-insensitive substring match on `name`",
+            schema: { type: "string", minLength: 1, maxLength: 100 },
+          },
+          {
+            name: "isActive",
+            in: "query",
+            description: "Filter by `isActive` (`true` or `false`)",
+            schema: { type: "string", enum: ["true", "false"] },
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Paged list ordered by name",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/CategoryListResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        operationId: "createCategory",
+        tags: ["Categories"],
+        summary: "Create category",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CategoryCreateBody" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Created",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/CategoryDetailResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "`category_name_conflict`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/categories/{categoryId}": {
+      parameters: [
+        {
+          name: "categoryId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "getCategory",
+        tags: ["Categories"],
+        summary: "Get category by id",
+        responses: {
+          "200": {
+            description: "Category",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/CategoryDetailResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Invalid `categoryId`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`category_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      patch: {
+        operationId: "patchCategory",
+        tags: ["Categories"],
+        summary: "Update category",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CategoryPatchBody" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Updated category",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/CategoryDetailResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed (body or invalid `categoryId`)",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`category_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "`category_name_conflict`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        operationId: "deleteCategory",
+        tags: ["Categories"],
+        summary: "Delete category",
+        description:
+          "Fails with `category_in_use` when products still reference this category (FK `ON DELETE RESTRICT`).",
+        responses: {
+          "204": { description: "No body" },
+          "400": {
+            description: "Invalid `categoryId`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`category_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description: "`category_in_use`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
     "/roles": {
       get: {
         operationId: "listRoles",
@@ -2807,6 +3027,55 @@ export const openApiDocument = {
               },
             },
           },
+        },
+      },
+      Category: {
+        type: "object",
+        required: ["id", "name", "description", "isActive", "createdAt"],
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string", maxLength: 100 },
+          description: { type: "string", nullable: true },
+          isActive: { type: "boolean" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      CategoryListResponse: {
+        type: "object",
+        required: ["data", "meta"],
+        properties: {
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Category" },
+          },
+          meta: { $ref: "#/components/schemas/PaginationMeta" },
+        },
+      },
+      CategoryDetailResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: { $ref: "#/components/schemas/Category" },
+        },
+      },
+      CategoryCreateBody: {
+        type: "object",
+        required: ["name"],
+        properties: {
+          name: { type: "string", minLength: 1, maxLength: 100 },
+          description: { type: "string", nullable: true, maxLength: 20000 },
+          isActive: { type: "boolean" },
+        },
+      },
+      CategoryPatchBody: {
+        type: "object",
+        description:
+          "Partial update; at least one of `name`, `description`, `isActive` (matches route `refine`).",
+        minProperties: 1,
+        properties: {
+          name: { type: "string", minLength: 1, maxLength: 100 },
+          description: { type: "string", nullable: true, maxLength: 20000 },
+          isActive: { type: "boolean" },
         },
       },
       Role: {

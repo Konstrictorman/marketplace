@@ -5,6 +5,7 @@ import ProductCard from "@/components/ProductCard/ProductCard";
 import { PublishProductButton } from "@/components/PublishProductButton/PublishProductButton";
 import { AUTH_SESSION_COOKIE_NAME } from "@/lib/auth-session";
 import type { ApiError } from "@/lib/api/client";
+import { listCategories } from "@/lib/api/categories";
 import { listProducts, type ProductListItem } from "@/lib/api/products";
 import { mapProductListItemToCardProduct } from "@/lib/map-product-list-item-to-card";
 import {
@@ -54,6 +55,9 @@ export default async function SellPage({
   } | null = null;
   let fetchError: string | null = null;
 
+  let publishCategories: { id: string; name: string }[] = [];
+  let categoriesError: string | null = null;
+
   try {
     const result = await listProducts({
       sellerId,
@@ -70,6 +74,21 @@ export default async function SellPage({
       typeof apiErr?.message === "string"
         ? apiErr.message
         : "Could not load products.";
+  }
+
+  try {
+    const cat = await listCategories({
+      page: 1,
+      pageSize: 200,
+      isActive: true,
+    });
+    publishCategories = cat.data.map(({ id, name }) => ({ id, name }));
+  } catch (e: unknown) {
+    const apiErr = e as Partial<ApiError>;
+    categoriesError =
+      typeof apiErr?.message === "string"
+        ? apiErr.message
+        : "Could not load categories.";
   }
 
   const buildHref = (p: number) => {
@@ -90,8 +109,20 @@ export default async function SellPage({
             Acá puedes ver los productos que has publicado.
           </p>
         </div>
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <PublishProductButton sellerId={sellerId} />
+        <div className="flex shrink-0 flex-col items-end gap-1">
+          {categoriesError ? (
+            <p
+              className="max-w-xs text-right text-xs text-amber-700 dark:text-amber-300"
+              role="status"
+            >
+              {categoriesError} — no se puede publicar hasta que existan
+              categorías.
+            </p>
+          ) : null}
+          <PublishProductButton
+            sellerId={sellerId}
+            categories={publishCategories}
+          />
         </div>
       </header>
 
