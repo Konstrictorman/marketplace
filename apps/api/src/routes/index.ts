@@ -4,6 +4,7 @@ import conversationParticipantsRoutes from "./conversation-participants.routes.j
 import conversationsRoutes from "./conversations.routes.js";
 import docsRoutes from "./docs.routes.js";
 import healthRoutes from "./health.routes.js";
+import messagesRoutes from "./messages.routes.js";
 import ordersRoutes from "./orders.routes.js";
 import productImagesRoutes from "./product-images.routes.js";
 import productsRoutes from "./products.routes.js";
@@ -25,6 +26,7 @@ rootRouter.use(authRoutes);
 rootRouter.use(ordersRoutes);
 rootRouter.use(conversationParticipantsRoutes);
 rootRouter.use(conversationsRoutes);
+rootRouter.use(messagesRoutes);
 rootRouter.use(productImagesRoutes);
 rootRouter.use(productsRoutes);
 rootRouter.use(rolesRoutes);
