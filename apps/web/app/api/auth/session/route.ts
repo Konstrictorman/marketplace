@@ -1,28 +1,13 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { AUTH_SESSION_COOKIE_NAME } from "@/lib/auth-session";
 import {
+  decodeMpSessionJwtPayload,
+  getUserIdFromMpSessionPayload,
+} from "@/lib/mp-session-payload";
+import {
   initialsFromDisplayName,
   initialsFromInstitutionalEmail,
 } from "@/lib/user-initials";
-
-type SessionClaims = {
-  institutionalEmail?: string;
-  username?: string;
-};
-
-function decodeJwtPayload(token: string): SessionClaims | null {
-  const parts = token.split(".");
-  if (parts.length !== 3 || !parts[1]) return null;
-  let b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-  const pad = b64.length % 4;
-  if (pad) b64 += "=".repeat(4 - pad);
-  try {
-    const json = atob(b64);
-    return JSON.parse(json) as SessionClaims;
-  } catch {
-    return null;
-  }
-}
 
 export async function GET(request: NextRequest) {
   const token = request.cookies.get(AUTH_SESSION_COOKIE_NAME)?.value;
@@ -33,8 +18,16 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const claims = decodeJwtPayload(token);
+  const claims = decodeMpSessionJwtPayload(token);
   if (!claims) {
+    return NextResponse.json(
+      { data: { authenticated: false as const } },
+      { status: 200 },
+    );
+  }
+
+  const userId = getUserIdFromMpSessionPayload(claims);
+  if (!userId) {
     return NextResponse.json(
       { data: { authenticated: false as const } },
       { status: 200 },
@@ -58,6 +51,7 @@ export async function GET(request: NextRequest) {
     {
       data: {
         authenticated: true as const,
+        userId,
         initials,
       },
     },
