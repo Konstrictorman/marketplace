@@ -40,3 +40,5 @@ next-env.d.ts
 # Local PR draft (use PR_DESCRIPTION.template.md; copy to this filename and paste on GitHub)
 PR_DESCRIPTION.md
 PR_DESCRIPTION.template.md
+
+data/uploads/*

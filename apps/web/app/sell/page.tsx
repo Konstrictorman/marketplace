@@ -1,14 +1,18 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import ProductCard from "@/components/ProductCard/ProductCard";
 import { PublishProductButton } from "@/components/PublishProductButton/PublishProductButton";
+import { AUTH_SESSION_COOKIE_NAME } from "@/lib/auth-session";
 import type { ApiError } from "@/lib/api/client";
 import { listProducts, type ProductListItem } from "@/lib/api/products";
 import { mapProductListItemToCardProduct } from "@/lib/map-product-list-item-to-card";
+import {
+  decodeMpSessionJwtPayload,
+  getUserIdFromMpSessionPayload,
+} from "@/lib/mp-session-payload";
 
 export const dynamic = "force-dynamic";
-
-/** Stand-in until auth provides the logged-in user id. Replace with session user. */
-const DEV_FALLBACK_SELLER_ID = "8ff50906-7d8b-41d7-ad51-198f912a4e46";
 
 function firstSearchParam(
   value: string | string[] | undefined,
@@ -24,9 +28,17 @@ export default async function SellPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(AUTH_SESSION_COOKIE_NAME)?.value;
+  const claims = token ? decodeMpSessionJwtPayload(token) : null;
+  const sellerId =
+    claims !== null ? getUserIdFromMpSessionPayload(claims) : undefined;
+
+  if (!sellerId) {
+    redirect("/login?callbackUrl=/sell");
+  }
+
   const sp = await searchParams;
-  const sellerIdFromQuery = firstSearchParam(sp.sellerId);
-  const sellerId = sellerIdFromQuery || DEV_FALLBACK_SELLER_ID;
   const page = Math.max(
     1,
     Number.parseInt(firstSearchParam(sp.page) ?? "1", 10) || 1,
@@ -62,9 +74,6 @@ export default async function SellPage({
 
   const buildHref = (p: number) => {
     const params = new URLSearchParams();
-    if (sellerIdFromQuery) {
-      params.set("sellerId", sellerIdFromQuery);
-    }
     if (p !== 1) {
       params.set("page", String(p));
     }
@@ -83,14 +92,6 @@ export default async function SellPage({
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <PublishProductButton sellerId={sellerId} />
-          {sellerIdFromQuery ? (
-            <Link
-              href="/sell"
-              className="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              Reset to dev default
-            </Link>
-          ) : null}
         </div>
       </header>
 
