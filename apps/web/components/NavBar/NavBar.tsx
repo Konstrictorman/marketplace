@@ -72,47 +72,47 @@ export default function NavBar() {
           Home
         </Button>
 
-      <Suspense
-       fallback={
-         <Skeleton
-           variant="rounded"
-            width={400}
-            height={36}
-            sx={{
-              backgroundColor: "rgba(254, 254, 254, 0.15)",
-              borderRadius: "8px",
-            }}
-          />
-        }
-      >
-        {isshop && <SearchBar />}
-      </Suspense>
-
-      {/* Spacer */}
-      <div style={{ flex: 1 }} />
-
-      {/* Right side */}
-      {isshop && <ShoppingCart />}
-      {!islogin && <NotificationsButton />}
-      {!islogin && <ChatButton onClick={() => setChatOpen(true)} />}
-      {session?.authenticated && (
-        <Avatar
-          aria-label={
-            session?.authenticated
-              ? `Signed in (${session.initials})`
-              : "Not signed in"
+        <Suspense
+          fallback={
+            <Skeleton
+              variant="rounded"
+              width={400}
+              height={36}
+              sx={{
+                backgroundColor: "rgba(254, 254, 254, 0.15)",
+                borderRadius: "8px",
+              }}
+            />
           }
-          sx={{
-            width: 32,
-            height: 32,
-            fontSize: "0.8125rem",
-            fontWeight: 600,
-            bgcolor: "rgb(189, 197, 217)",
-            color: "rgb(24, 62, 157)",
-          }}
         >
-          {session?.authenticated ? session.initials : "?"}
-        </Avatar>
+          {isshop && <SearchBar />}
+        </Suspense>
+
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* Right side */}
+        {isshop && <ShoppingCart />}
+        {!islogin && <NotificationsButton />}
+        {!islogin && <ChatButton onClick={() => setChatOpen(true)} />}
+        {session?.authenticated && (
+          <Avatar
+            aria-label={
+              session?.authenticated
+                ? `Signed in (${session.initials})`
+                : "Not signed in"
+            }
+            sx={{
+              width: 32,
+              height: 32,
+              fontSize: "0.8125rem",
+              fontWeight: 600,
+              bgcolor: "rgb(189, 197, 217)",
+              color: "rgb(24, 62, 157)",
+            }}
+          >
+            {session?.authenticated ? session.initials : "?"}
+          </Avatar>
         )}
         <button
           type="button"
