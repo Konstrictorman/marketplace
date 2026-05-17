@@ -25,6 +25,7 @@ import {
 } from "@/lib/api/orders";
 import { getAuthSession } from "@/lib/api/auth";
 import { isApiError } from "@/lib/api/client";
+import { getProductById } from "@/lib/api/products";
 
 export default function CartPage() {
   const {
@@ -40,6 +41,7 @@ export default function CartPage() {
   const [orderError, setOrderError] = useState<string | null>(null);
   const [orders, setOrders] = useState<OrderDetail[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
+  const [productNames, setProductNames] = useState<Record<string, string>>({});
 
   const selectedItems = items.filter((item) => item.selected);
   const total = selectedItems.reduce(
@@ -64,6 +66,21 @@ export default function CartPage() {
           ),
         );
         setOrders(detailed.map((o) => o.data));
+        const allProductsIds = [
+          ...new Set(
+            detailed.flatMap((o) => o.data.items.map((i) => i.productId)),
+          ),
+        ];
+        const productResults = await Promise.allSettled(
+          allProductsIds.map((id) => getProductById(id)),
+        );
+        const names: Record<string, string> = {};
+        productResults.forEach((result, index) => {
+          if (result.status === "fulfilled") {
+            names[allProductsIds[index]] = result.value.data.title;
+          }
+        });
+        setProductNames(names);
       } catch {
         // silently fail — orders section just stays empty
       } finally {
@@ -535,7 +552,8 @@ export default function CartPage() {
                       variant="body2"
                       sx={{ color: "rgb(76, 98, 153)" }}
                     >
-                      {item.productId} x{item.quantity}
+                      {productNames[item.productId] ?? item.productId} x{" "}
+                      {item.quantity}
                     </Typography>
                     <Typography
                       variant="body2"
