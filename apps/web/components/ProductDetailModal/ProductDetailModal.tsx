@@ -14,6 +14,7 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import { productType } from "@/types/types";
 import { useCart } from "@/context/CartContext";
+import ChatButton from "../ChatButton/ChatButton";
 
 type ProductDetailModalProps = {
   open: boolean;
@@ -234,6 +235,15 @@ const ProductDetailModal = ({
           >
             Add to Cart
           </Button>
+        </Box>
+        <Box sx={{ mt: 1 }}>
+          <ChatButton
+            variant="modal"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent("openChatDrawer"));
+              onClose();
+            }}
+          />
         </Box>
       </Box>
     </Modal>
