@@ -72,21 +72,21 @@ export default function NavBar() {
           Home
         </Button>
 
-        <Suspense
-          fallback={
-            <Skeleton
-              variant="rounded"
-              width={400}
-              height={36}
-              sx={{
-                backgroundColor: "rgba(254, 254, 254, 0.15)",
-                borderRadius: "8px",
-              }}
-            />
-          }
-        >
-          {isshop && <SearchBar />}
-        </Suspense>
+       <Suspense
+         fallback={
+           <Skeleton
+             variant="rounded"
+             width={400}
+             height={36}
+             sx={{
+               backgroundColor: "rgba(254, 254, 254, 0.15)",
+               borderRadius: "8px",
+             }}
+           />
+         }
+       >
+         {isshop && <SearchBar />}
+      </Suspense>
 
         {/* Spacer */}
         <div style={{ flex: 1 }} />
