@@ -42,3 +42,4 @@ PR_DESCRIPTION.md
 PR_DESCRIPTION.template.md
 
 data/uploads/*
+.claude/
