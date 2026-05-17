@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Box,
   Typography,
@@ -10,16 +10,21 @@ import {
   Card,
   CardMedia,
   Chip,
+  CircularProgress,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
-import { createOrder } from "@/lib/api/orders";
+import {
+  createOrder,
+  getOrderById,
+  listOrders,
+  OrderDetail,
+} from "@/lib/api/orders";
 import { getAuthSession } from "@/lib/api/auth";
 import { isApiError } from "@/lib/api/client";
-import type { OrderDetail } from "@/lib/api/orders";
 
 export default function CartPage() {
   const {
@@ -33,7 +38,8 @@ export default function CartPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
-  const [completedOrders, setCompletedOrders] = useState<OrderDetail[]>([]);
+  const [orders, setOrders] = useState<OrderDetail[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
 
   const selectedItems = items.filter((item) => item.selected);
   const total = selectedItems.reduce(
@@ -41,6 +47,31 @@ export default function CartPage() {
     0,
   );
   const allSelected = items.length > 0 && items.every((item) => item.selected);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      setOrdersLoading(true);
+      try {
+        const session = await getAuthSession();
+        if (!session.authenticated) return;
+        const result = await listOrders({
+          buyerId: session.userId,
+          pageSize: 50,
+        });
+        const detailed = await Promise.all(
+          result.data.map((o) =>
+            getOrderById(o.id, { buyerId: session.userId }),
+          ),
+        );
+        setOrders(detailed.map((o) => o.data));
+      } catch {
+        // silently fail — orders section just stays empty
+      } finally {
+        setOrdersLoading(false);
+      }
+    };
+    void fetchOrders();
+  }, []);
 
   const handleConfirmPurchase = async () => {
     if (selectedItems.length === 0) return;
@@ -56,14 +87,14 @@ export default function CartPage() {
       }
 
       const order = await createOrder({
-        buyerId: session.initials,
+        buyerId: session.userId,
         items: selectedItems.map((item) => ({
           productId: String(item.product.id),
           quantity: item.amount,
         })),
       });
-      setCompletedOrders((prev) => [...prev, order.data]);
 
+      setOrders((prev) => [order.data, ...prev]);
       selectedItems.forEach((item) => removeFromCart(item.product.id));
     } catch (e: unknown) {
       const message = isApiError(e)
@@ -90,46 +121,6 @@ export default function CartPage() {
     }
   };
 
-  if (items.length === 0 && completedOrders.length === 0) {
-    return (
-      <Box
-        sx={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 2,
-          py: 8,
-        }}
-      >
-        <Typography
-          variant="h5"
-          sx={{ color: "rgb(0, 28, 100)", fontWeight: "bold" }}
-        >
-          Your cart is empty
-        </Typography>
-        <Typography variant="body1" sx={{ color: "rgb(76, 98, 153)" }}>
-          Go back to the shop and add some products!
-        </Typography>
-        <Button
-          variant="contained"
-          component={Link}
-          href="/shop"
-          sx={{
-            textTransform: "none",
-            mt: 1,
-            borderRadius: "10px",
-            backgroundColor: "rgb(24, 62, 157)",
-            "&:hover": { backgroundColor: "rgb(29, 54, 120)" },
-          }}
-        >
-          Go to Shop
-        </Button>
-      </Box>
-    );
-  }
-
   return (
     <Box
       sx={{
@@ -142,7 +133,36 @@ export default function CartPage() {
       }}
     >
       {/* Cart + Summary row */}
-      {items.length > 0 && (
+      {items.length === 0 ? (
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 2,
+            py: 8,
+          }}
+        >
+          <Typography variant="h5" sx={{ color: "rgb(76, 98, 153) " }}>
+            Your cart is empty! Go back to the shop
+          </Typography>
+          <Button
+            variant="contained"
+            component={Link}
+            href="/shop"
+            sx={{
+              textTransform: "none",
+              mt: 1,
+              borderRadius: "10px",
+              backgroundColor: "rgb(24, 62, 157)",
+              "&:hover": { backgroundColor: "rgb(29, 54, 120)" },
+            }}
+          >
+            Go to Shop
+          </Button>
+        </Box>
+      ) : (
         <Box sx={{ display: "flex", gap: 3, alignItems: "flex-start" }}>
           {/* Left side — product list */}
           <Box
@@ -429,17 +449,27 @@ export default function CartPage() {
           </Box>
         </Box>
       )}
-      {completedOrders.length > 0 && (
-        <Box>
-          <Typography
-            variant="h6"
-            sx={{ fontWeight: "bold", color: "rgb(0, 28, 100)", mb: 2 }}
-          >
-            Your Orders
-          </Typography>
 
+      {/* Orders section — always visible */}
+      <Box>
+        <Typography
+          variant="h6"
+          sx={{ fontWeight: "bold", color: "rgb(0, 28, 100)", mb: 2 }}
+        >
+          Your Orders
+        </Typography>
+
+        {ordersLoading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+            <CircularProgress sx={{ color: "rgb(24, 62, 157)" }} />
+          </Box>
+        ) : orders.length === 0 ? (
+          <Typography variant="body2" sx={{ color: "rgb(131, 148, 189)" }}>
+            No current orders
+          </Typography>
+        ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {completedOrders.map((order) => (
+            {orders.map((order) => (
               <Card
                 key={order.id}
                 sx={{
@@ -505,7 +535,7 @@ export default function CartPage() {
                       variant="body2"
                       sx={{ color: "rgb(76, 98, 153)" }}
                     >
-                      Product ID: {item.productId} x{item.quantity}
+                      {item.productId} x{item.quantity}
                     </Typography>
                     <Typography
                       variant="body2"
@@ -548,8 +578,8 @@ export default function CartPage() {
               </Card>
             ))}
           </Box>
-        </Box>
-      )}
+        )}
+      </Box>
     </Box>
   );
 }
