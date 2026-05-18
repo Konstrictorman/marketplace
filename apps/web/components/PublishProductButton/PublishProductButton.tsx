@@ -20,10 +20,12 @@ import {
   Typography,
 } from "@mui/material";
 import type { ApiError } from "@/lib/api/client";
+import type { Product } from "@/lib/api/products";
 import {
   createProduct,
   createProductImage,
   uploadProductImage,
+  updateProduct,
 } from "@/lib/api/products";
 
 const moneyPattern = /^\d+(\.\d{1,2})?$/;
@@ -70,22 +72,26 @@ const defaultValues: FormValues = {
   status: "active",
 };
 
-function PublishProductFormModal({
+export function PublishProductFormModal({
   open,
   onClose,
   sellerId,
   categories,
-  onPublishSuccess,
+  initialProduct,
+  onSuccess,
 }: {
   open: boolean;
   onClose: () => void;
   sellerId: string;
   categories: { id: string; name: string }[];
-  onPublishSuccess?: () => void;
+  initialProduct?: Product;
+  onSuccess?: () => void;
 }) {
   const router = useRouter();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+
+  const isEditing = Boolean(initialProduct);
 
   const {
     control,
@@ -95,7 +101,20 @@ function PublishProductFormModal({
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(publishProductSchema),
-    defaultValues,
+    defaultValues: initialProduct
+      ? {
+          categoryId: initialProduct.categoryId,
+          title: initialProduct.title,
+          description: initialProduct.description,
+          price: initialProduct.price,
+          condition: initialProduct.condition,
+          inventory: initialProduct.inventory,
+          status:
+            initialProduct.status === "removed"
+              ? "inactive"
+              : initialProduct.status,
+        }
+      : defaultValues,
   });
 
   const closeModal = useCallback(() => {
@@ -108,40 +127,53 @@ function PublishProductFormModal({
   const onSubmit = handleSubmit(async (values) => {
     setSubmitError(null);
     try {
-      const created = await createProduct({
-        sellerId,
-        categoryId: values.categoryId,
-        title: values.title,
-        description: values.description,
-        price: values.price,
-        condition: values.condition,
-        inventory: values.inventory,
-        status: values.status,
-      });
-
-      const productId = created.data.id;
-      const urls: string[] = [];
-
-      for (const file of imageFiles) {
-        const { url } = await uploadProductImage(sellerId, file);
-        urls.push(url);
-      }
-
-      for (let i = 0; i < urls.length; i++) {
-        await createProductImage(productId, {
+      if (isEditing && initialProduct) {
+        await updateProduct(initialProduct.id, {
           sellerId,
-          url: urls[i]!,
-          sortOrder: i,
-          isMain: i === 0,
+          categoryId: values.categoryId,
+          title: values.title,
+          description: values.description,
+          price: values.price,
+          condition: values.condition,
+          inventory: values.inventory,
+          status: values.status,
         });
+      } else {
+        const created = await createProduct({
+          sellerId,
+          categoryId: values.categoryId,
+          title: values.title,
+          description: values.description,
+          price: values.price,
+          condition: values.condition,
+          inventory: values.inventory,
+          status: values.status,
+        });
+
+        const productId = created.data.id;
+        const urls: string[] = [];
+
+        for (const file of imageFiles) {
+          const { url } = await uploadProductImage(sellerId, file);
+          urls.push(url);
+        }
+
+        for (let i = 0; i < urls.length; i++) {
+          await createProductImage(productId, {
+            sellerId,
+            url: urls[i]!,
+            sortOrder: i,
+            isMain: i === 0,
+          });
+        }
       }
 
       closeModal();
       router.refresh();
-      onPublishSuccess?.();
+      onSuccess?.();
     } catch (e) {
       const err = e as ApiError;
-      setSubmitError(err.message ?? "No se pudo crear el producto.");
+      setSubmitError(err.message ?? "No se pudo guardar el producto.");
     }
   });
 
@@ -180,7 +212,7 @@ function PublishProductFormModal({
             mb: 2,
           }}
         >
-          Publicar nuevo producto
+          {isEditing ? "Editar producto" : "Publicar nuevo producto"}
         </Typography>
 
         <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
@@ -287,65 +319,67 @@ function PublishProductFormModal({
             ) : null}
           </FormControl>
 
-          <FormControl fullWidth>
-            <Typography
-              variant="body2"
-              sx={{ mb: 0.5, fontWeight: 600, color: "rgb(0, 28, 100)" }}
-            >
-              Imágenes (opcional)
-            </Typography>
-            <Button
-              variant="outlined"
-              component="label"
-              disabled={isSubmitting}
-              sx={{
-                alignSelf: "flex-start",
-                textTransform: "none",
-                borderRadius: "10px",
-              }}
-            >
-              Elegir archivos
-              <input
-                id="publish-product-images"
-                type="file"
-                multiple
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                hidden
-                onChange={(e) => {
-                  setImageFiles(Array.from(e.target.files ?? []));
-                }}
-              />
-            </Button>
-            <FormHelperText>
-              JPEG, PNG, WebP o GIF. La primera será la imagen principal.
-              {imageFiles.length > 0
-                ? ` · ${imageFiles.length} seleccionada(s)`
-                : ""}
-            </FormHelperText>
-            {imageFiles.length > 0 ? (
-              <Box
-                component="ul"
+          {!isEditing && (
+            <FormControl fullWidth>
+              <Typography
+                variant="body2"
+                sx={{ mb: 0.5, fontWeight: 600, color: "rgb(0, 28, 100)" }}
+              >
+                Imágenes (opcional)
+              </Typography>
+              <Button
+                variant="outlined"
+                component="label"
+                disabled={isSubmitting}
                 sx={{
-                  mt: 1,
-                  pl: 2,
-                  mb: 0,
-                  maxHeight: 120,
-                  overflow: "auto",
-                  fontSize: "0.8125rem",
-                  color: "text.secondary",
+                  alignSelf: "flex-start",
+                  textTransform: "none",
+                  borderRadius: "10px",
                 }}
               >
-                {imageFiles.map((f, idx) => (
-                  <Box
-                    component="li"
-                    key={`${f.name}-${f.size}-${f.lastModified}-${idx}`}
-                  >
-                    {f.name}
-                  </Box>
-                ))}
-              </Box>
-            ) : null}
-          </FormControl>
+                Elegir archivos
+                <input
+                  id="publish-product-images"
+                  type="file"
+                  multiple
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  hidden
+                  onChange={(e) => {
+                    setImageFiles(Array.from(e.target.files ?? []));
+                  }}
+                />
+              </Button>
+              <FormHelperText>
+                JPEG, PNG, WebP o GIF. La primera será la imagen principal.
+                {imageFiles.length > 0
+                  ? ` · ${imageFiles.length} seleccionada(s)`
+                  : ""}
+              </FormHelperText>
+              {imageFiles.length > 0 ? (
+                <Box
+                  component="ul"
+                  sx={{
+                    mt: 1,
+                    pl: 2,
+                    mb: 0,
+                    maxHeight: 120,
+                    overflow: "auto",
+                    fontSize: "0.8125rem",
+                    color: "text.secondary",
+                  }}
+                >
+                  {imageFiles.map((f, idx) => (
+                    <Box
+                      component="li"
+                      key={`${f.name}-${f.size}-${f.lastModified}-${idx}`}
+                    >
+                      {f.name}
+                    </Box>
+                  ))}
+                </Box>
+              ) : null}
+            </FormControl>
+          )}
 
           {submitError ? (
             <Typography color="error" variant="body2" role="alert">
@@ -376,7 +410,13 @@ function PublishProductFormModal({
                 "&:hover": { bgcolor: "rgb(29, 54, 120)" },
               }}
             >
-              {isSubmitting ? "Publicando…" : "Publicar"}
+              {isSubmitting
+                ? isEditing
+                  ? "Guardando…"
+                  : "Publicando…"
+                : isEditing
+                  ? "Guardar cambios"
+                  : "Publicar"}
             </Button>
           </Box>
         </Box>
@@ -388,9 +428,11 @@ function PublishProductFormModal({
 export function PublishProductButton({
   sellerId,
   categories,
+  onSuccess,
 }: {
   sellerId: string;
   categories: { id: string; name: string }[];
+  onSuccess?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [successToastOpen, setSuccessToastOpen] = useState(false);
@@ -416,7 +458,10 @@ export function PublishProductButton({
         onClose={() => setOpen(false)}
         sellerId={sellerId}
         categories={categories}
-        onPublishSuccess={() => setSuccessToastOpen(true)}
+        onSuccess={() => {
+          setSuccessToastOpen(true);
+          onSuccess?.();
+        }}
       />
       <Snackbar
         open={successToastOpen}
@@ -433,7 +478,7 @@ export function PublishProductButton({
           variant="filled"
           sx={{ width: "100%" }}
         >
-          Product added successfully
+          Producto guardado exitosamente
         </Alert>
       </Snackbar>
     </>
