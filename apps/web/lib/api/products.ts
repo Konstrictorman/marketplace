@@ -16,6 +16,7 @@ export type ProductListItem = {
   sellerId: string;
   categoryId: string;
   title: string;
+  description: string;
   price: string;
   condition: ProductCondition;
   inventory: number;
@@ -26,9 +27,7 @@ export type ProductListItem = {
   mainImageUrl: string | null;
 };
 
-export type Product = ProductListItem & {
-  description: string;
-};
+export type Product = ProductListItem;
 
 export type ProductImage = {
   id: string;

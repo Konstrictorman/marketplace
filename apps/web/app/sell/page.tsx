@@ -24,18 +24,17 @@ import {
   listProducts,
   deleteProduct,
   getProductById,
+  type Product,
+  type ProductListItem,
 } from "@/lib/api/products";
-import type { Product } from "@/lib/api/products";
 import { listCategories } from "@/lib/api/categories";
-import { mapProductListItemToCardProduct } from "@/lib/map-product-list-item-to-card";
 import { getAuthSession } from "@/lib/api/auth";
 import ProductCard from "@/components/ProductCard/ProductCard";
-import type { productType } from "@/types/types";
 
 export default function SellPage() {
   const router = useRouter();
   const [sellerId, setSellerId] = useState<string | null>(null);
-  const [products, setProducts] = useState<productType[]>([]);
+  const [products, setProducts] = useState<ProductListItem[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>(
     [],
   );
@@ -44,7 +43,7 @@ export default function SellPage() {
   const [total, setTotal] = useState(0);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [productToDelete, setProductToDelete] = useState<productType | null>(
+  const [productToDelete, setProductToDelete] = useState<ProductListItem | null>(
     null,
   );
   const [isDeleting, setIsDeleting] = useState(false);
@@ -80,11 +79,7 @@ export default function SellPage() {
         sortBy: "createdAt",
         sortOrder: "desc",
       });
-      setProducts(
-        result.data
-          .filter((p) => p.status !== "removed")
-          .map(mapProductListItemToCardProduct),
-      );
+      setProducts(result.data.filter((p) => p.status !== "removed"));
       setTotalPages(result.meta.totalPages);
       setTotal(result.meta.total);
     } catch (e: unknown) {
@@ -142,7 +137,7 @@ export default function SellPage() {
     }
   };
 
-  const handleEdit = async (product: productType) => {
+  const handleEdit = async (product: ProductListItem) => {
     try {
       const full = await getProductById(product.id);
       setProductToEdit(full.data);
@@ -267,7 +262,7 @@ export default function SellPage() {
         <DialogContent>
           <DialogContentText>
             Are you sure you want to delete{" "}
-            <strong>{productToDelete?.name}</strong>? This action cannot be
+            <strong>{productToDelete?.title}</strong>? This action cannot be
             undone.
           </DialogContentText>
           {deleteError && (

@@ -7,21 +7,24 @@ import {
   Button,
   Chip,
   Divider,
-  Rating,
   IconButton,
   CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
-import { productType } from "@/types/types";
+import type { ProductListItem } from "@/lib/api/products";
 import { useCart } from "@/context/CartContext";
 import ChatButton from "../ChatButton/ChatButton";
-import { getProductById } from "@/lib/api/products";
+import {
+  conditionLabel,
+  parseProductPrice,
+  productImageUrl,
+} from "@/lib/product-helpers";
 
 type ProductDetailModalProps = {
   open: boolean;
   onClose: () => void;
-  product: productType;
+  product: ProductListItem;
 };
 
 const ProductDetailModal = ({
@@ -29,11 +32,12 @@ const ProductDetailModal = ({
   onClose,
   product,
 }: ProductDetailModalProps) => {
-  const inStock = product.stock > 0;
+  const inStock = product.inventory > 0;
   const [amount, setAmount] = useState(1);
+  const price = parseProductPrice(product.price);
 
   const increase = () => {
-    if (amount < product.stock) setAmount(amount + 1);
+    if (amount < product.inventory) setAmount(amount + 1);
   };
 
   const decrease = () => {
@@ -77,11 +81,10 @@ const ProductDetailModal = ({
           outline: "none",
         }}
       >
-        {/* Image */}
         <Box
           component="img"
-          src={product.image}
-          alt={product.name}
+          src={productImageUrl(product.mainImageUrl)}
+          alt={product.title}
           sx={{
             width: "100%",
             height: 220,
@@ -91,7 +94,6 @@ const ProductDetailModal = ({
           }}
         />
 
-        {/* Condition + Rating row */}
         <Box
           sx={{
             display: "flex",
@@ -101,7 +103,7 @@ const ProductDetailModal = ({
           }}
         >
           <Chip
-            label={product.condition === "new" ? "New" : "Used"}
+            label={conditionLabel(product.condition)}
             size="small"
             sx={{
               backgroundColor:
@@ -112,52 +114,31 @@ const ProductDetailModal = ({
               fontWeight: "bold",
             }}
           />
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Rating
-              value={product.rating}
-              precision={0.5}
-              readOnly
-              size="small"
-            />
-            <Typography variant="body2" sx={{ color: "rgb(131, 148, 189)" }}>
-              ({product.rating})
-            </Typography>
-          </Box>
         </Box>
 
-        {/* Title */}
         <Typography
           variant="h5"
           sx={{ fontWeight: "bold", color: "rgb(0, 28, 100)", mb: 1 }}
         >
-          {product.name}
+          {product.title}
         </Typography>
 
-        {/* Price */}
         <Typography
           variant="h4"
           sx={{ color: "rgb(29, 54, 120)", fontWeight: "bold", mb: 2 }}
         >
-          ${product.price.toFixed(2)}
+          ${price.toFixed(2)}
         </Typography>
 
         <Divider sx={{ borderColor: "rgb(189, 197, 217)", mb: 2 }} />
 
-        {/* Description */}
-        {descLoading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
-            <CircularProgress size={20} sx={{ color: "rgb(24, 62, 157)" }} />
-          </Box>
-        ) : description ? (
-          <Typography
-            variant="body1"
-            sx={{ color: "rgb(76, 98, 153)", mb: 3, lineHeight: 1.8 }}
-          >
-            {description}
-          </Typography>
-        ) : null}
+        <Typography
+          variant="body1"
+          sx={{ color: "rgb(76, 98, 153)", mb: 3, lineHeight: 1.8 }}
+        >
+          {product.description}
+        </Typography>
 
-        {/* Stock */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
           <Typography
             variant="body2"
@@ -166,13 +147,12 @@ const ProductDetailModal = ({
             Availability:
           </Typography>
           <Chip
-            label={inStock ? `${product.stock} in stock` : "Out of stock"}
+            label={inStock ? `${product.inventory} in stock` : "Out of stock"}
             color={inStock ? "success" : "error"}
             size="small"
           />
         </Box>
 
-        {/* Amount selector */}
         {inStock && (
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
             <Typography
@@ -209,7 +189,7 @@ const ProductDetailModal = ({
 
               <IconButton
                 onClick={increase}
-                disabled={amount >= product.stock}
+                disabled={amount >= product.inventory}
                 size="small"
                 sx={{
                   border: "1px solid rgb(24, 62, 157)",
@@ -223,7 +203,6 @@ const ProductDetailModal = ({
           </Box>
         )}
 
-        {/* Buttons */}
         <Box sx={{ display: "flex", gap: 1 }}>
           <Button
             variant="outlined"

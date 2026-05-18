@@ -53,6 +53,7 @@ type ProductListRow = {
   sellerId: string;
   categoryId: string;
   title: string;
+  description: string;
   price: Prisma.Decimal;
   condition: ProductCondition;
   inventory: number;
@@ -62,7 +63,6 @@ type ProductListRow = {
   images: { url: string }[];
 };
 
-/** List payloads omit heavy `description` (use GET by id when needed). */
 function mapProductListItem(row: ProductListRow) {
   const mainImageUrl = row.images[0]?.url ?? null;
   return {
@@ -70,6 +70,7 @@ function mapProductListItem(row: ProductListRow) {
     sellerId: row.sellerId,
     categoryId: row.categoryId,
     title: row.title,
+    description: row.description,
     price: row.price.toString(),
     condition: row.condition,
     inventory: row.inventory,
@@ -148,6 +149,7 @@ export async function listProducts(params: ListProductsParams) {
     sellerId: true,
     categoryId: true,
     title: true,
+    description: true,
     price: true,
     condition: true,
     inventory: true,

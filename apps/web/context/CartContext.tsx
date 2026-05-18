@@ -7,14 +7,15 @@ import {
   useMemo,
   useCallback,
 } from "react";
-import { CartItem, productType, CartContextType } from "@/types/types";
+import type { ProductListItem } from "@/lib/api/products";
+import { CartItem, CartContextType } from "@/types/types";
 
 const CartContext = createContext<CartContextType | null>(null);
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
 
-  const addToCart = useCallback((product: productType, amount: number) => {
+  const addToCart = useCallback((product: ProductListItem, amount: number) => {
     setItems((prev) => {
       const existing = prev.find((item) => item.product.id === product.id);
       if (existing) {

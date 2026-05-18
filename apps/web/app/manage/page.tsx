@@ -1,8 +1,6 @@
 import { Box, Grid, Typography } from "@mui/material";
 import ProductCard from "@/components/ProductCard/ProductCard";
-import { listProducts } from "@/lib/api/products";
-import { mapProductListItemToCardProduct } from "@/lib/map-product-list-item-to-card";
-import { productType } from "@/types/types";
+import { listProducts, type ProductListItem } from "@/lib/api/products";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +12,7 @@ export default async function ManagePage({
   const sp = await searchParams;
   const searchQuery = typeof sp.search === "string" ? sp.search.trim() : "";
 
-  let products: productType[] = [];
+  let products: ProductListItem[] = [];
   let fetchError: string | null = null;
 
   try {
@@ -24,7 +22,7 @@ export default async function ManagePage({
       sortBy: "createdAt",
       sortOrder: "desc",
     });
-    products = result.data.map(mapProductListItemToCardProduct);
+    products = result.data;
   } catch {
     fetchError = "Could not load products.";
   }
