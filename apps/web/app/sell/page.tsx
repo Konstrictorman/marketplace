@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Alert,
   Box,
   Button,
   Dialog,
@@ -11,11 +12,20 @@ import {
   DialogTitle,
   Typography,
   CircularProgress,
+  Snackbar,
 } from "@mui/material";
-import { PublishProductButton } from "@/components/PublishProductButton/PublishProductButton";
+import {
+  PublishProductButton,
+  PublishProductFormModal,
+} from "@/components/PublishProductButton/PublishProductButton";
 import type { ApiError } from "@/lib/api/client";
 import { isApiError } from "@/lib/api/client";
-import { listProducts, deleteProduct } from "@/lib/api/products";
+import {
+  listProducts,
+  deleteProduct,
+  getProductById,
+} from "@/lib/api/products";
+import type { Product } from "@/lib/api/products";
 import { listCategories } from "@/lib/api/categories";
 import { mapProductListItemToCardProduct } from "@/lib/map-product-list-item-to-card";
 import { getAuthSession } from "@/lib/api/auth";
@@ -39,6 +49,8 @@ export default function SellPage() {
   );
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
 
   const pageSize = 12;
 
@@ -54,34 +66,45 @@ export default function SellPage() {
     void init();
   }, [router]);
 
+  const fetchProducts = async (
+    currentSellerId: string,
+    currentPage: number,
+  ) => {
+    setLoading(true);
+    setFetchError(null);
+    try {
+      const result = await listProducts({
+        sellerId: currentSellerId,
+        page: currentPage,
+        pageSize,
+        sortBy: "createdAt",
+        sortOrder: "desc",
+      });
+      setProducts(
+        result.data
+          .filter((p) => p.status !== "removed")
+          .map(mapProductListItemToCardProduct),
+      );
+      setTotalPages(result.meta.totalPages);
+      setTotal(result.meta.total);
+    } catch (e: unknown) {
+      const apiErr = e as Partial<ApiError>;
+      setFetchError(
+        typeof apiErr?.message === "string"
+          ? apiErr.message
+          : "Could not load products.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!sellerId) return;
-    const fetchProducts = async () => {
-      setLoading(true);
-      setFetchError(null);
-      try {
-        const result = await listProducts({
-          sellerId,
-          page,
-          pageSize,
-          sortBy: "createdAt",
-          sortOrder: "desc",
-        });
-        setProducts(result.data.map(mapProductListItemToCardProduct));
-        setTotalPages(result.meta.totalPages);
-        setTotal(result.meta.total);
-      } catch (e: unknown) {
-        const apiErr = e as Partial<ApiError>;
-        setFetchError(
-          typeof apiErr?.message === "string"
-            ? apiErr.message
-            : "Could not load products.",
-        );
-      } finally {
-        setLoading(false);
-      }
+    const run = async () => {
+      await fetchProducts(sellerId, page);
     };
-    void fetchProducts();
+    void run();
   }, [sellerId, page]);
 
   useEffect(() => {
@@ -108,6 +131,7 @@ export default function SellPage() {
       await deleteProduct(productToDelete.id, { sellerId });
       setProductToDelete(null);
       setProducts((prev) => prev.filter((p) => p.id !== productToDelete.id));
+      setSuccessToast("Producto eliminado exitosamente");
     } catch (e) {
       const message = isApiError(e)
         ? e.message
@@ -115,6 +139,15 @@ export default function SellPage() {
       setDeleteError(message);
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleEdit = async (product: productType) => {
+    try {
+      const full = await getProductById(product.id);
+      setProductToEdit(full.data);
+    } catch {
+      // silently fail — product stays uneditable
     }
   };
 
@@ -128,7 +161,11 @@ export default function SellPage() {
           </p>
         </div>
         {sellerId && (
-          <PublishProductButton sellerId={sellerId} categories={categories} />
+          <PublishProductButton
+            sellerId={sellerId}
+            categories={categories}
+            onSuccess={() => void fetchProducts(sellerId, page)}
+          />
         )}
       </header>
 
@@ -164,9 +201,7 @@ export default function SellPage() {
                 <ProductCard
                   product={p}
                   isOwner
-                  onEdit={() => {
-                    /* edit modal coming next */
-                  }}
+                  onEdit={() => void handleEdit(p)}
                   onDelete={() => setProductToDelete(p)}
                 />
               </li>
@@ -210,6 +245,23 @@ export default function SellPage() {
         </>
       )}
 
+      {/* Edit modal */}
+      {sellerId && productToEdit && (
+        <PublishProductFormModal
+          open={Boolean(productToEdit)}
+          onClose={() => setProductToEdit(null)}
+          sellerId={sellerId}
+          categories={categories}
+          initialProduct={productToEdit}
+          onSuccess={() => {
+            setProductToEdit(null);
+            void fetchProducts(sellerId, page);
+            setSuccessToast("Producto actualizado exitosamente");
+          }}
+        />
+      )}
+
+      {/* Delete dialog */}
       <Dialog open={!!productToDelete} onClose={() => setProductToDelete(null)}>
         <DialogTitle>Delete product?</DialogTitle>
         <DialogContent>
@@ -241,6 +293,24 @@ export default function SellPage() {
           </Button>
         </DialogActions>
       </Dialog>
+      <Snackbar
+        open={Boolean(successToast)}
+        autoHideDuration={3000}
+        onClose={(_, reason) => {
+          if (reason === "clickaway") return;
+          setSuccessToast(null);
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSuccessToast(null)}
+          severity="success"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {successToast}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }

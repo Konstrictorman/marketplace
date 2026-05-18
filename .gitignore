@@ -41,5 +41,5 @@ next-env.d.ts
 PR_DESCRIPTION.md
 PR_DESCRIPTION.template.md
 
-data/uploads/*
+apps/api/data/uploads/*
 .claude/
