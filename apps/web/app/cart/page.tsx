@@ -9,17 +9,14 @@ import {
   IconButton,
   Card,
   CardMedia,
-  Chip,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
-import { createOrder } from "@/lib/api/orders";
 import { getAuthSession } from "@/lib/api/auth";
 import { isApiError } from "@/lib/api/client";
-import type { OrderDetail } from "@/lib/api/orders";
 
 export default function CartPage() {
   const {
@@ -33,7 +30,6 @@ export default function CartPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
-  const [completedOrders, setCompletedOrders] = useState<OrderDetail[]>([]);
 
   const selectedItems = items.filter((item) => item.selected);
   const total = selectedItems.reduce(
@@ -54,16 +50,6 @@ export default function CartPage() {
         setOrderError("You must be logged in to place an order.");
         return;
       }
-
-      const order = await createOrder({
-        buyerId: session.initials,
-        items: selectedItems.map((item) => ({
-          productId: String(item.product.id),
-          quantity: item.amount,
-        })),
-      });
-      setCompletedOrders((prev) => [...prev, order.data]);
-
       selectedItems.forEach((item) => removeFromCart(item.product.id));
     } catch (e: unknown) {
       const message = isApiError(e)
@@ -74,61 +60,6 @@ export default function CartPage() {
       setIsSubmitting(false);
     }
   };
-
-  const statusColor = (status: string) => {
-    switch (status) {
-      case "paid":
-        return "success";
-      case "cancelled":
-        return "error";
-      case "shipped":
-        return "info";
-      case "delivered":
-        return "success";
-      default:
-        return "warning";
-    }
-  };
-
-  if (items.length === 0 && completedOrders.length === 0) {
-    return (
-      <Box
-        sx={{
-          flex: 1,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 2,
-          py: 8,
-        }}
-      >
-        <Typography
-          variant="h5"
-          sx={{ color: "rgb(0, 28, 100)", fontWeight: "bold" }}
-        >
-          Your cart is empty
-        </Typography>
-        <Typography variant="body1" sx={{ color: "rgb(76, 98, 153)" }}>
-          Go back to the shop and add some products!
-        </Typography>
-        <Button
-          variant="contained"
-          component={Link}
-          href="/shop"
-          sx={{
-            textTransform: "none",
-            mt: 1,
-            borderRadius: "10px",
-            backgroundColor: "rgb(24, 62, 157)",
-            "&:hover": { backgroundColor: "rgb(29, 54, 120)" },
-          }}
-        >
-          Go to Shop
-        </Button>
-      </Box>
-    );
-  }
 
   return (
     <Box
@@ -142,7 +73,36 @@ export default function CartPage() {
       }}
     >
       {/* Cart + Summary row */}
-      {items.length > 0 && (
+      {items.length === 0 ? (
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 2,
+            py: 8,
+          }}
+        >
+          <Typography variant="h5" sx={{ color: "rgb(76, 98, 153) " }}>
+            Your cart is empty! Go back to the shop
+          </Typography>
+          <Button
+            variant="contained"
+            component={Link}
+            href="/shop"
+            sx={{
+              textTransform: "none",
+              mt: 1,
+              borderRadius: "10px",
+              backgroundColor: "rgb(24, 62, 157)",
+              "&:hover": { backgroundColor: "rgb(29, 54, 120)" },
+            }}
+          >
+            Go to Shop
+          </Button>
+        </Box>
+      ) : (
         <Box sx={{ display: "flex", gap: 3, alignItems: "flex-start" }}>
           {/* Left side — product list */}
           <Box
@@ -426,127 +386,6 @@ export default function CartPage() {
             >
               Continue Shopping
             </Button>
-          </Box>
-        </Box>
-      )}
-      {completedOrders.length > 0 && (
-        <Box>
-          <Typography
-            variant="h6"
-            sx={{ fontWeight: "bold", color: "rgb(0, 28, 100)", mb: 2 }}
-          >
-            Your Orders
-          </Typography>
-
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {completedOrders.map((order) => (
-              <Card
-                key={order.id}
-                sx={{
-                  borderRadius: "12px",
-                  boxShadow: "0px 2px 10px rgba(76, 98, 153, 0.15)",
-                  p: 3,
-                }}
-              >
-                {/* Order header */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: 2,
-                  }}
-                >
-                  <Box>
-                    <Typography
-                      variant="body2"
-                      sx={{ color: "rgb(131, 148, 189)" }}
-                    >
-                      Order ID
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        fontWeight: "bold",
-                        color: "rgb(0, 28, 100)",
-                        fontSize: "0.85rem",
-                      }}
-                    >
-                      {order.id}
-                    </Typography>
-                  </Box>
-                  <Chip
-                    label={order.status}
-                    color={
-                      statusColor(order.status) as
-                        | "success"
-                        | "error"
-                        | "warning"
-                        | "info"
-                    }
-                    size="small"
-                    sx={{ textTransform: "capitalize" }}
-                  />
-                </Box>
-
-                <Divider sx={{ borderColor: "rgb(189, 197, 217)", mb: 2 }} />
-
-                {/* Order items */}
-                {order.items.map((item) => (
-                  <Box
-                    key={item.id}
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      mb: 1,
-                    }}
-                  >
-                    <Typography
-                      variant="body2"
-                      sx={{ color: "rgb(76, 98, 153)" }}
-                    >
-                      Product ID: {item.productId} x{item.quantity}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{ fontWeight: "bold", color: "rgb(0, 28, 100)" }}
-                    >
-                      ${item.subtotal}
-                    </Typography>
-                  </Box>
-                ))}
-
-                <Divider sx={{ borderColor: "rgb(189, 197, 217)", my: 2 }} />
-
-                {/* Total */}
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Typography
-                    variant="body1"
-                    sx={{ fontWeight: "bold", color: "rgb(0, 28, 100)" }}
-                  >
-                    Total
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    sx={{ fontWeight: "bold", color: "rgb(29, 54, 120)" }}
-                  >
-                    ${order.totalAmount}
-                  </Typography>
-                </Box>
-
-                {/* Date */}
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: "rgb(131, 148, 189)",
-                    mt: 1,
-                    textAlign: "right",
-                  }}
-                >
-                  {new Date(order.createdAt).toLocaleDateString()}
-                </Typography>
-              </Card>
-            ))}
           </Box>
         </Box>
       )}

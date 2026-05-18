@@ -46,7 +46,6 @@ export default function NavBar() {
       router.refresh();
     }
   }
-
   return (
     <>
       <nav
@@ -71,7 +70,16 @@ export default function NavBar() {
         >
           Home
         </Button>
-
+        <Button
+          href="/orders"
+          style={{
+            color: "rgb(254, 254, 254)",
+            textDecoration: "none",
+            fontWeight: "500",
+          }}
+        >
+          Mis Pedidos
+        </Button>
         <Suspense
           fallback={
             <Skeleton
