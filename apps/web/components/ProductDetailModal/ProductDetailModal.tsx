@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Typography,
   Box,
@@ -15,6 +15,8 @@ import RemoveIcon from "@mui/icons-material/Remove";
 import { productType } from "@/types/types";
 import { useCart } from "@/context/CartContext";
 import ChatButton from "../ChatButton/ChatButton";
+import { getProductById } from "@/lib/api/products";
+import { CircularProgress } from "@mui/material";
 
 type ProductDetailModalProps = {
   open: boolean;
@@ -39,6 +41,25 @@ const ProductDetailModal = ({
   };
 
   const { addToCart } = useCart();
+  const [description, setDescription] = useState<string | null>(null);
+  const [descLoading, setDescLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    const run = async () => {
+      setDescription(null);
+      setDescLoading(true);
+      try {
+        const res = await getProductById(product.id);
+        setDescription(res.data.description);
+      } catch {
+        setDescription(null);
+      } finally {
+        setDescLoading(false);
+      }
+    };
+    void run();
+  }, [open, product.id]);
 
   return (
     <Modal open={open} onClose={onClose}>
@@ -123,12 +144,18 @@ const ProductDetailModal = ({
         <Divider sx={{ borderColor: "rgb(189, 197, 217)", mb: 2 }} />
 
         {/* Description */}
-        <Typography
-          variant="body1"
-          sx={{ color: "rgb(76, 98, 153)", mb: 3, lineHeight: 1.8 }}
-        >
-          {product.description}
-        </Typography>
+        {descLoading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
+            <CircularProgress size={20} sx={{ color: "rgb(24, 62, 157)" }} />
+          </Box>
+        ) : description ? (
+          <Typography
+            variant="body1"
+            sx={{ color: "rgb(76, 98, 153)", mb: 3, lineHeight: 1.8 }}
+          >
+            {description}
+          </Typography>
+        ) : null}
 
         {/* Stock */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
