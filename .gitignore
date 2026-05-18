@@ -44,3 +44,4 @@ PR_DESCRIPTION.template.md
 data/uploads/*
 #Claude Code
 .claude/
+.claude/
