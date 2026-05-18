@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Box,
   Typography,
@@ -9,23 +9,14 @@ import {
   IconButton,
   Card,
   CardMedia,
-  Chip,
-  CircularProgress,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
-import {
-  createOrder,
-  getOrderById,
-  listOrders,
-  OrderDetail,
-} from "@/lib/api/orders";
 import { getAuthSession } from "@/lib/api/auth";
 import { isApiError } from "@/lib/api/client";
-import { getProductById } from "@/lib/api/products";
 
 export default function CartPage() {
   const {
@@ -39,9 +30,6 @@ export default function CartPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
-  const [orders, setOrders] = useState<OrderDetail[]>([]);
-  const [ordersLoading, setOrdersLoading] = useState(true);
-  const [productNames, setProductNames] = useState<Record<string, string>>({});
 
   const selectedItems = items.filter((item) => item.selected);
   const total = selectedItems.reduce(
@@ -49,46 +37,6 @@ export default function CartPage() {
     0,
   );
   const allSelected = items.length > 0 && items.every((item) => item.selected);
-
-  useEffect(() => {
-    const fetchOrders = async () => {
-      setOrdersLoading(true);
-      try {
-        const session = await getAuthSession();
-        if (!session.authenticated) return;
-        const result = await listOrders({
-          buyerId: session.userId,
-          pageSize: 50,
-        });
-        const detailed = await Promise.all(
-          result.data.map((o) =>
-            getOrderById(o.id, { buyerId: session.userId }),
-          ),
-        );
-        setOrders(detailed.map((o) => o.data));
-        const allProductsIds = [
-          ...new Set(
-            detailed.flatMap((o) => o.data.items.map((i) => i.productId)),
-          ),
-        ];
-        const productResults = await Promise.allSettled(
-          allProductsIds.map((id) => getProductById(id)),
-        );
-        const names: Record<string, string> = {};
-        productResults.forEach((result, index) => {
-          if (result.status === "fulfilled") {
-            names[allProductsIds[index]] = result.value.data.title;
-          }
-        });
-        setProductNames(names);
-      } catch {
-        // silently fail — orders section just stays empty
-      } finally {
-        setOrdersLoading(false);
-      }
-    };
-    void fetchOrders();
-  }, []);
 
   const handleConfirmPurchase = async () => {
     if (selectedItems.length === 0) return;
@@ -102,16 +50,6 @@ export default function CartPage() {
         setOrderError("You must be logged in to place an order.");
         return;
       }
-
-      const order = await createOrder({
-        buyerId: session.userId,
-        items: selectedItems.map((item) => ({
-          productId: String(item.product.id),
-          quantity: item.amount,
-        })),
-      });
-
-      setOrders((prev) => [order.data, ...prev]);
       selectedItems.forEach((item) => removeFromCart(item.product.id));
     } catch (e: unknown) {
       const message = isApiError(e)
@@ -120,21 +58,6 @@ export default function CartPage() {
       setOrderError(message);
     } finally {
       setIsSubmitting(false);
-    }
-  };
-
-  const statusColor = (status: string) => {
-    switch (status) {
-      case "paid":
-        return "success";
-      case "cancelled":
-        return "error";
-      case "shipped":
-        return "info";
-      case "delivered":
-        return "success";
-      default:
-        return "warning";
     }
   };
 
@@ -466,138 +389,6 @@ export default function CartPage() {
           </Box>
         </Box>
       )}
-
-      {/* Orders section — always visible */}
-      <Box>
-        <Typography
-          variant="h6"
-          sx={{ fontWeight: "bold", color: "rgb(0, 28, 100)", mb: 2 }}
-        >
-          Your Orders
-        </Typography>
-
-        {ordersLoading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
-            <CircularProgress sx={{ color: "rgb(24, 62, 157)" }} />
-          </Box>
-        ) : orders.length === 0 ? (
-          <Typography variant="body2" sx={{ color: "rgb(131, 148, 189)" }}>
-            No current orders
-          </Typography>
-        ) : (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
-            {orders.map((order) => (
-              <Card
-                key={order.id}
-                sx={{
-                  borderRadius: "12px",
-                  boxShadow: "0px 2px 10px rgba(76, 98, 153, 0.15)",
-                  p: 3,
-                }}
-              >
-                {/* Order header */}
-                <Box
-                  sx={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    mb: 2,
-                  }}
-                >
-                  <Box>
-                    <Typography
-                      variant="body2"
-                      sx={{ color: "rgb(131, 148, 189)" }}
-                    >
-                      Order ID
-                    </Typography>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        fontWeight: "bold",
-                        color: "rgb(0, 28, 100)",
-                        fontSize: "0.85rem",
-                      }}
-                    >
-                      {order.id}
-                    </Typography>
-                  </Box>
-                  <Chip
-                    label={order.status}
-                    color={
-                      statusColor(order.status) as
-                        | "success"
-                        | "error"
-                        | "warning"
-                        | "info"
-                    }
-                    size="small"
-                    sx={{ textTransform: "capitalize" }}
-                  />
-                </Box>
-
-                <Divider sx={{ borderColor: "rgb(189, 197, 217)", mb: 2 }} />
-
-                {/* Order items */}
-                {order.items.map((item) => (
-                  <Box
-                    key={item.id}
-                    sx={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      mb: 1,
-                    }}
-                  >
-                    <Typography
-                      variant="body2"
-                      sx={{ color: "rgb(76, 98, 153)" }}
-                    >
-                      {productNames[item.productId] ?? item.productId} x{" "}
-                      {item.quantity}
-                    </Typography>
-                    <Typography
-                      variant="body2"
-                      sx={{ fontWeight: "bold", color: "rgb(0, 28, 100)" }}
-                    >
-                      ${item.subtotal}
-                    </Typography>
-                  </Box>
-                ))}
-
-                <Divider sx={{ borderColor: "rgb(189, 197, 217)", my: 2 }} />
-
-                {/* Total */}
-                <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                  <Typography
-                    variant="body1"
-                    sx={{ fontWeight: "bold", color: "rgb(0, 28, 100)" }}
-                  >
-                    Total
-                  </Typography>
-                  <Typography
-                    variant="body1"
-                    sx={{ fontWeight: "bold", color: "rgb(29, 54, 120)" }}
-                  >
-                    ${order.totalAmount}
-                  </Typography>
-                </Box>
-
-                {/* Date */}
-                <Typography
-                  variant="body2"
-                  sx={{
-                    color: "rgb(131, 148, 189)",
-                    mt: 1,
-                    textAlign: "right",
-                  }}
-                >
-                  {new Date(order.createdAt).toLocaleDateString()}
-                </Typography>
-              </Card>
-            ))}
-          </Box>
-        )}
-      </Box>
     </Box>
   );
 }
