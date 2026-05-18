@@ -20,6 +20,7 @@ import { createOrder } from "@/lib/api/orders";
 import { getAuthSession } from "@/lib/api/auth";
 import { isApiError } from "@/lib/api/client";
 import type { OrderDetail } from "@/lib/api/orders";
+import { useNotifications } from "@/context/NotificationContext";
 
 export default function CartPage() {
   const {
@@ -34,7 +35,7 @@ export default function CartPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   const [completedOrders, setCompletedOrders] = useState<OrderDetail[]>([]);
-
+  const { addNotification } = useNotifications();
   const selectedItems = items.filter((item) => item.selected);
   const total = selectedItems.reduce(
     (sum, item) => sum + item.product.price * item.amount,
@@ -56,14 +57,14 @@ export default function CartPage() {
       }
 
       const order = await createOrder({
-        buyerId: session.initials,
+        buyerId: session.userId,
         items: selectedItems.map((item) => ({
           productId: String(item.product.id),
           quantity: item.amount,
         })),
       });
       setCompletedOrders((prev) => [...prev, order.data]);
-
+      addNotification("Tu compra fue realizada exitosamente.", "purchase");
       selectedItems.forEach((item) => removeFromCart(item.product.id));
     } catch (e: unknown) {
       const message = isApiError(e)

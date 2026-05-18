@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Avatar, Button, Skeleton } from "@mui/material";
 import ShoppingCart from "../ShoppingCart/ShoppingCart";
 import { getAuthSession, logout, type AuthSessionData } from "@/lib/api/auth";
-import NotificationsButton from "../NotificationsButton/NotificationsButton";
+import NotificationsButton from "../NotificationButton/NotificationButton";
 import SearchBar from "../SearchBar/SearchBar";
 import ChatButton from "../ChatButton/ChatButton";
 import ChatDrawer from "../ChatDrawer/ChatDrawer";
