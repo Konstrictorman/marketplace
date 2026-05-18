@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
+  Alert,
   Box,
   Button,
   Dialog,
@@ -11,6 +12,7 @@ import {
   DialogTitle,
   Typography,
   CircularProgress,
+  Snackbar,
 } from "@mui/material";
 import {
   PublishProductButton,
@@ -48,6 +50,7 @@ export default function SellPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
 
   const pageSize = 12;
 
@@ -128,6 +131,7 @@ export default function SellPage() {
       await deleteProduct(productToDelete.id, { sellerId });
       setProductToDelete(null);
       setProducts((prev) => prev.filter((p) => p.id !== productToDelete.id));
+      setSuccessToast("Producto eliminado exitosamente");
     } catch (e) {
       const message = isApiError(e)
         ? e.message
@@ -252,6 +256,7 @@ export default function SellPage() {
           onSuccess={() => {
             setProductToEdit(null);
             void fetchProducts(sellerId, page);
+            setSuccessToast("Producto actualizado exitosamente");
           }}
         />
       )}
@@ -288,6 +293,24 @@ export default function SellPage() {
           </Button>
         </DialogActions>
       </Dialog>
+      <Snackbar
+        open={Boolean(successToast)}
+        autoHideDuration={3000}
+        onClose={(_, reason) => {
+          if (reason === "clickaway") return;
+          setSuccessToast(null);
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSuccessToast(null)}
+          severity="success"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {successToast}
+        </Alert>
+      </Snackbar>
     </div>
   );
 }
