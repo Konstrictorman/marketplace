@@ -79,6 +79,24 @@ export default function Home() {
         >
           Vender
         </Button>
+
+        <Button
+          variant="contained"
+          size="large"
+          href="/manage"
+          sx={{
+            textTransform: "none",
+            px: 5,
+            py: 1.5,
+            borderRadius: "12px",
+            fontSize: "1.1rem",
+            fontWeight: "bold",
+            backgroundColor: "rgb(0, 0, 0)",
+            "&:hover": { backgroundColor: "rgb(37, 39, 43)" },
+          }}
+        >
+          Manage
+        </Button>
       </Box>
     </Box>
   );

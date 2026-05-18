@@ -1,30 +1,37 @@
 "use client";
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
 import { InputBase, Box, IconButton } from "@mui/material";
 
 export default function SearchBar() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(searchParams.get("search") ?? "");
 
+  const listPath = pathname === "/manage" ? "/manage" : "/shop";
+
   const handleSeachClick = () => {
     if (search.trim()) {
-      router.push(`/shop?search=${encodeURIComponent(search.trim())}`);
+      router.push(
+        `${listPath}?search=${encodeURIComponent(search.trim())}`,
+      );
     }
   };
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && search.trim()) {
-      router.push(`/shop?search=${encodeURIComponent(search.trim())}`);
+      router.push(
+        `${listPath}?search=${encodeURIComponent(search.trim())}`,
+      );
     }
   };
 
   const handleClear = () => {
     setSearch("");
-    router.push("/shop");
+    router.push(listPath);
   };
 
   return (

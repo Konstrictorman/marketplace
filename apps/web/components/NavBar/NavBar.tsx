@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Avatar, Button, Skeleton } from "@mui/material";
+import HomeIcon from "@mui/icons-material/Home";
+import { Avatar, IconButton, Skeleton } from "@mui/material";
+import Link from "next/link";
 import ShoppingCart from "../ShoppingCart/ShoppingCart";
 import { getAuthSession, logout, type AuthSessionData } from "@/lib/api/auth";
 import NotificationsButton from "../NotificationButton/NotificationButton";
@@ -17,6 +19,8 @@ export default function NavBar() {
   const islogin = pathname === "/login";
   const isshop = pathname === "/shop";
   const isregister = pathname === "/register";
+  const ismanage = pathname === "/manage";
+  const showProductSearch = isshop || ismanage;
 
   useEffect(() => {
     let cancelled = false;
@@ -61,16 +65,14 @@ export default function NavBar() {
         }}
       >
         {/* Left side — links */}
-        <Button
+        <IconButton
+          component={Link}
           href="/"
-          style={{
-            color: "rgb(254, 254, 254)",
-            textDecoration: "none",
-            fontWeight: "500",
-          }}
+          aria-label="Home"
+          sx={{ color: "rgb(254, 254, 254)" }}
         >
-          Home
-        </Button>
+          <HomeIcon />
+        </IconButton>
         {session?.authenticated && !islogin && !isregister && (
           <Button
             href="/orders"
@@ -96,7 +98,7 @@ export default function NavBar() {
             />
           }
         >
-          {isshop && <SearchBar />}
+          {showProductSearch && <SearchBar />}
         </Suspense>
 
         {/* Spacer */}
