@@ -15,12 +15,19 @@ import { productType } from "@/types/types";
 
 type ProductCardProps = {
   product: productType;
+  isOwner?: boolean;
+  onEdit?: () => void;
+  onDelete?: () => void;
 };
 
-const ProductCard = ({ product }: ProductCardProps) => {
+const ProductCard = ({
+  product,
+  isOwner = false,
+  onEdit,
+  onDelete,
+}: ProductCardProps) => {
   const [open, setOpen] = useState(false);
 
-  console.log("product", JSON.stringify(product, null, 2));
   return (
     <>
       <Card
@@ -36,7 +43,6 @@ const ProductCard = ({ product }: ProductCardProps) => {
           },
         }}
       >
-        {/* Image */}
         <CardMedia
           component="img"
           height="180"
@@ -46,7 +52,6 @@ const ProductCard = ({ product }: ProductCardProps) => {
         />
 
         <CardContent sx={{ padding: "16px" }}>
-          {/* Title */}
           <Typography
             variant="h6"
             component="div"
@@ -62,7 +67,6 @@ const ProductCard = ({ product }: ProductCardProps) => {
             {product.name}
           </Typography>
 
-          {/* Price */}
           <Typography
             variant="h5"
             sx={{
@@ -74,7 +78,6 @@ const ProductCard = ({ product }: ProductCardProps) => {
             ${product.price.toFixed(2)}
           </Typography>
 
-          {/* Rating */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
             <Rating
               value={product.rating}
@@ -88,34 +91,76 @@ const ProductCard = ({ product }: ProductCardProps) => {
           </Box>
         </CardContent>
 
-        {/* One button */}
         <CardActions sx={{ px: 2, pb: 2, gap: 1 }}>
-          <Button
-            variant="outlined"
-            size="small"
-            fullWidth
-            onClick={() => setOpen(true)}
-            sx={{
-              textTransform: "none",
-              borderRadius: "10px",
-              borderColor: "rgb(24, 62, 157)",
-              color: "rgb(24, 62, 157)",
-              "&:hover": {
-                borderColor: "rgb(29, 54, 120)",
-                backgroundColor: "rgba(24, 62, 157, 0.05)",
-              },
-            }}
-          >
-            Details
-          </Button>
+          {isOwner ? (
+            <>
+              <Button
+                variant="outlined"
+                size="small"
+                fullWidth
+                onClick={onEdit}
+                sx={{
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  borderColor: "rgb(24, 62, 157)",
+                  color: "rgb(24, 62, 157)",
+                  "&:hover": {
+                    borderColor: "rgb(29, 54, 120)",
+                    backgroundColor: "rgba(24, 62, 157, 0.05)",
+                  },
+                }}
+              >
+                Edit
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                fullWidth
+                onClick={onDelete}
+                sx={{
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  borderColor: "red",
+                  color: "red",
+                  "&:hover": {
+                    borderColor: "darkred",
+                    backgroundColor: "rgba(255, 0, 0, 0.05)",
+                  },
+                }}
+              >
+                Delete
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="outlined"
+              size="small"
+              fullWidth
+              onClick={() => setOpen(true)}
+              sx={{
+                textTransform: "none",
+                borderRadius: "10px",
+                borderColor: "rgb(24, 62, 157)",
+                color: "rgb(24, 62, 157)",
+                "&:hover": {
+                  borderColor: "rgb(29, 54, 120)",
+                  backgroundColor: "rgba(24, 62, 157, 0.05)",
+                },
+              }}
+            >
+              Details
+            </Button>
+          )}
         </CardActions>
       </Card>
 
-      <ProductDetailModal
-        open={open}
-        onClose={() => setOpen(false)}
-        product={product}
-      />
+      {!isOwner && (
+        <ProductDetailModal
+          open={open}
+          onClose={() => setOpen(false)}
+          product={product}
+        />
+      )}
     </>
   );
 };
