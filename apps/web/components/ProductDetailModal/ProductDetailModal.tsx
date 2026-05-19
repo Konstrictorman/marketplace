@@ -36,6 +36,8 @@ import {
   productStatusChipColor,
   productStatusLabel,
 } from "@/lib/product-helpers";
+import { getAuthSession } from "@/lib/api/auth";
+import { createConversation } from "@/lib/api/conversations";
 
 type ProductDetailModalProps = {
   open: boolean;
@@ -432,8 +434,25 @@ const ProductDetailModal = ({
               <ChatButton
                 variant="modal"
                 onClick={() => {
-                  window.dispatchEvent(new CustomEvent("openChatDrawer"));
-                  handleClose();
+                  const open = async () => {
+                    try {
+                      const session = await getAuthSession();
+                      if (!session.authenticated) return;
+                      const conv = await createConversation({
+                        productId: product.id,
+                        buyerId: session.userId,
+                      });
+                      window.dispatchEvent(
+                        new CustomEvent("openChatDrawer", {
+                          detail: { conversationId: conv.data.id },
+                        }),
+                      );
+                    } catch {
+                      window.dispatchEvent(new CustomEvent("openChatDrawer"));
+                    }
+                    handleClose();
+                  };
+                  void open();
                 }}
               />
             </Box>

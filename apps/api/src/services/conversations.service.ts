@@ -1,5 +1,4 @@
 import { Prisma, prisma } from "@marketplace/database";
-import { randomUUID } from "node:crypto";
 import { HttpError } from "../lib/http-errors.js";
 
 type ConversationBaseRow = {
@@ -191,8 +190,8 @@ export async function createConversation(input: CreateConversationInput) {
       participantIds.map((userId) =>
         tx.$executeRaw(
           Prisma.sql`
-            INSERT INTO conversation_participants (id, conversation_id, user_id, created_at)
-            VALUES (${randomUUID()}, ${conversation.id}, ${userId}, NOW())
+            INSERT INTO conversation_participants (conversation_id, user_id, created_at)
+            VALUES (${conversation.id}::uuid, ${userId}::uuid, NOW())
           `,
         ),
       ),

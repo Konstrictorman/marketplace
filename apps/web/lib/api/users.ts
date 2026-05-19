@@ -32,3 +32,10 @@ export async function createUser(
   );
   return data.data;
 }
+
+export async function getUserById(userId: string): Promise<UserPublic> {
+  const { data } = await apiClient.get<{ data: UserPublic }>(
+    `/api/users/${userId}`,
+  );
+  return data.data;
+}
