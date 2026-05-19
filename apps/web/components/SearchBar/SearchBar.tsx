@@ -15,17 +15,13 @@ export default function SearchBar() {
 
   const handleSeachClick = () => {
     if (search.trim()) {
-      router.push(
-        `${listPath}?search=${encodeURIComponent(search.trim())}`,
-      );
+      router.push(`${listPath}?search=${encodeURIComponent(search.trim())}`);
     }
   };
 
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && search.trim()) {
-      router.push(
-        `${listPath}?search=${encodeURIComponent(search.trim())}`,
-      );
+      router.push(`${listPath}?search=${encodeURIComponent(search.trim())}`);
     }
   };
 

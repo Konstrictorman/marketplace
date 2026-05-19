@@ -29,12 +29,17 @@ export function getRoleNamesFromSessionToken(token: string): string[] {
   return [];
 }
 
-export function sessionHasAnyRole(token: string, allowed: readonly string[]): boolean {
+export function sessionHasAnyRole(
+  token: string,
+  allowed: readonly string[],
+): boolean {
   const userRoles = getRoleNamesFromSessionToken(token);
   return allowed.some((role) => userRoles.includes(role));
 }
 
-export function requiredRolesForPath(pathname: string): readonly string[] | null {
+export function requiredRolesForPath(
+  pathname: string,
+): readonly string[] | null {
   for (const route of ROLE_PROTECTED_ROUTES) {
     if (pathname === route.path || pathname.startsWith(`${route.path}/`)) {
       return route.roles;

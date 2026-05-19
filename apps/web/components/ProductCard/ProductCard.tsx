@@ -11,10 +11,7 @@ import {
 } from "@mui/material";
 import ProductDetailModal from "@/components/ProductDetailModal/ProductDetailModal";
 import type { ProductListItem } from "@/lib/api/products";
-import {
-  parseProductPrice,
-  productImageUrl,
-} from "@/lib/product-helpers";
+import { parseProductPrice, productImageUrl } from "@/lib/product-helpers";
 
 type ProductCardProps = {
   product: ProductListItem;

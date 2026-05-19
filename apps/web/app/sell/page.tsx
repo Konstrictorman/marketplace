@@ -43,9 +43,8 @@ export default function SellPage() {
   const [total, setTotal] = useState(0);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [productToDelete, setProductToDelete] = useState<ProductListItem | null>(
-    null,
-  );
+  const [productToDelete, setProductToDelete] =
+    useState<ProductListItem | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [productToEdit, setProductToEdit] = useState<Product | null>(null);

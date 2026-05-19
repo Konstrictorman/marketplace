@@ -13,9 +13,7 @@ export default function Home() {
     getAuthSession()
       .then((session) => {
         if (cancelled) return;
-        setShowManage(
-          session.authenticated && hasAdminRole(session.roles),
-        );
+        setShowManage(session.authenticated && hasAdminRole(session.roles));
       })
       .catch(() => {
         if (!cancelled) setShowManage(false);
