@@ -159,8 +159,7 @@ export async function getProductRating(productId: string) {
       AND rating IS NOT NULL
   `;
 
-  const ratingCount =
-    row?.rating_count != null ? Number(row.rating_count) : 0;
+  const ratingCount = row?.rating_count != null ? Number(row.rating_count) : 0;
   const avgRating =
     row?.avg_rating != null ? Number(row.avg_rating) : Number.NaN;
 

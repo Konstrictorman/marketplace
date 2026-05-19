@@ -102,10 +102,7 @@ const ProductCard = ({
               readOnly
               size="small"
             />
-            <Typography
-              variant="caption"
-              sx={{ color: "rgb(131, 148, 189)" }}
-            >
+            <Typography variant="caption" sx={{ color: "rgb(131, 148, 189)" }}>
               ({formatProductRating(ratingValue)}/5)
             </Typography>
           </Box>

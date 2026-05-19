@@ -48,7 +48,9 @@ function mapOrderItem(row: OrderItemDTO | OrderItemRow): OrderItemDTO {
   const createdAt =
     row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt;
   const rawRating =
-    "rating" in row ? (row as OrderItemRow).rating : (row as OrderItemDTO).rating;
+    "rating" in row
+      ? (row as OrderItemRow).rating
+      : (row as OrderItemDTO).rating;
   const ratingValue =
     rawRating === null || rawRating === undefined
       ? null

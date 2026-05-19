@@ -529,7 +529,7 @@ export const openApiDocument = {
         tags: ["Products"],
         summary: "Get computed product rating",
         description:
-          "Read-only aggregate: `AVG(order_items.rating)` where `rating IS NOT NULL` for this `productId`. Returns `rating: \"0.00\"` and `ratingCount: 0` when no rated purchases exist. Does not read a column on `products`.",
+          'Read-only aggregate: `AVG(order_items.rating)` where `rating IS NOT NULL` for this `productId`. Returns `rating: "0.00"` and `ratingCount: 0` when no rated purchases exist. Does not read a column on `products`.',
         responses: {
           "200": {
             description: "Computed average and count of rated line items",
@@ -569,7 +569,8 @@ export const openApiDocument = {
           "Full catalog row including `description` and `sellerUserName`. For the buyer-average score, call **`GET /products/{id}/rating`**.",
         responses: {
           "200": {
-            description: "Product detail (rating not embedded; see `/products/{id}/rating`)",
+            description:
+              "Product detail (rating not embedded; see `/products/{id}/rating`)",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ProductDetailResponse" },
@@ -3667,7 +3668,7 @@ export const openApiDocument = {
           rating: {
             type: "string",
             description:
-              "Average of rated order items (0–5), e.g. \"4.25\". \"0.00\" when none.",
+              'Average of rated order items (0–5), e.g. "4.25". "0.00" when none.',
           },
           ratingCount: {
             type: "integer",
