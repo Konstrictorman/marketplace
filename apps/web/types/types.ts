@@ -1,5 +1,7 @@
 import type { ProductListItem } from "@/lib/api/products";
 
+export type ProductType = ProductListItem;
+
 export type CartItem = {
   product: ProductListItem;
   amount: number;

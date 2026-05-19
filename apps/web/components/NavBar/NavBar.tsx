@@ -82,7 +82,7 @@ export default function NavBar() {
               fontWeight: "500",
             }}
           >
-            Mis Pedidos
+            My Orders
           </Button>
         )}
         <Suspense
