@@ -9,6 +9,7 @@ import {
   Divider,
   Rating,
   IconButton,
+  CircularProgress,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
@@ -16,7 +17,6 @@ import { productType } from "@/types/types";
 import { useCart } from "@/context/CartContext";
 import ChatButton from "../ChatButton/ChatButton";
 import { getProductById } from "@/lib/api/products";
-import { CircularProgress } from "@mui/material";
 
 type ProductDetailModalProps = {
   open: boolean;
