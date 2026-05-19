@@ -209,10 +209,12 @@ CREATE TABLE public.order_items (
     quantity integer NOT NULL,
     unit_price numeric(12,2) NOT NULL,
     subtotal numeric(12,2) NOT NULL,
+    rating numeric(3,2),
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     CONSTRAINT order_items_quantity_check CHECK ((quantity >= 1)),
     CONSTRAINT order_items_subtotal_check CHECK ((subtotal >= (0)::numeric)),
-    CONSTRAINT order_items_unit_price_check CHECK ((unit_price > (0)::numeric))
+    CONSTRAINT order_items_unit_price_check CHECK ((unit_price > (0)::numeric)),
+    CONSTRAINT order_items_rating_check CHECK (((rating IS NULL) OR ((rating >= (0)::numeric) AND (rating <= (5)::numeric))))
 );
 
 

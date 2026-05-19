@@ -14,6 +14,8 @@ export type OrderItemDTO = {
   quantity: number;
   unitPrice: string;
   subtotal: string;
+  /** Buyer product rating 0–5; `null` when not yet rated. */
+  rating: string | null;
   createdAt: string;
 };
 
@@ -45,6 +47,16 @@ function mapOrderItem(row: OrderItemDTO | OrderItemRow): OrderItemDTO {
       : row.subtotal;
   const createdAt =
     row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt;
+  const rawRating =
+    "rating" in row
+      ? (row as OrderItemRow).rating
+      : (row as OrderItemDTO).rating;
+  const ratingValue =
+    rawRating === null || rawRating === undefined
+      ? null
+      : rawRating instanceof Prisma.Decimal
+        ? rawRating.toString()
+        : String(rawRating);
   return {
     id: row.id,
     orderId: row.orderId,
@@ -53,8 +65,35 @@ function mapOrderItem(row: OrderItemDTO | OrderItemRow): OrderItemDTO {
     quantity: row.quantity,
     unitPrice,
     subtotal,
+    rating: ratingValue,
     createdAt,
   };
+}
+
+const RATEABLE_ORDER_STATUSES: OrderStatus[] = [
+  OrderStatus.confirmed,
+  OrderStatus.delivered,
+];
+
+function assertOrderRateable(status: OrderStatus): void {
+  if (!RATEABLE_ORDER_STATUSES.includes(status)) {
+    throw new HttpError(
+      409,
+      "Product can only be rated after the order is confirmed or delivered",
+      "order_not_rateable",
+    );
+  }
+}
+
+function parseProductRatingValue(rating: number): Prisma.Decimal {
+  if (!Number.isFinite(rating) || rating < 0 || rating > 5) {
+    throw new HttpError(
+      400,
+      "Rating must be between 0 and 5",
+      "validation_failed",
+    );
+  }
+  return new Prisma.Decimal(rating.toFixed(2));
 }
 
 export function mapOrderSummary(order: {
@@ -539,6 +578,35 @@ export async function patchOrderItem(input: {
       include: { items: { orderBy: { createdAt: "asc" } } },
     });
     return { data: mapOrderDetail(full) };
+  });
+}
+
+/** Set or update the buyer’s product rating on a line item (post-checkout). */
+export async function patchOrderItemRating(input: {
+  orderId: string;
+  itemId: string;
+  buyerId?: string | undefined;
+  rating: number;
+}): Promise<{ data: OrderItemDTO }> {
+  return prisma.$transaction(async (tx) => {
+    const order = await loadOrderOwned(tx, input.orderId, input.buyerId);
+    assertOrderRateable(order.status);
+
+    const item = await tx.orderItem.findFirst({
+      where: { id: input.itemId, orderId: input.orderId },
+    });
+    if (!item) {
+      throw new HttpError(404, "Order item not found", "order_item_not_found");
+    }
+
+    const rating = parseProductRatingValue(input.rating);
+
+    const updated = await tx.orderItem.update({
+      where: { id: input.itemId },
+      data: { rating },
+    });
+
+    return { data: mapOrderItem(updated) };
   });
 }
 

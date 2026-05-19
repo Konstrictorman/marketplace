@@ -16,6 +16,7 @@ import {
   listOrders,
   patchOrder,
   patchOrderItem,
+  patchOrderItemRating,
 } from "../services/orders.service.js";
 
 function prismaEnumFromJson<Enum extends Parameters<typeof z.nativeEnum>[0]>(
@@ -127,6 +128,16 @@ const patchOrderItemBodySchema = z.object({
 
 type PatchOrderItemBody = z.infer<typeof patchOrderItemBodySchema>;
 
+const patchOrderItemRatingBodySchema = z.object({
+  buyerId: z.string().uuid().optional(),
+  rating: z.preprocess(
+    (v) => (typeof v === "string" ? Number(v) : v),
+    z.number().min(0).max(5),
+  ),
+});
+
+type PatchOrderItemRatingBody = z.infer<typeof patchOrderItemRatingBodySchema>;
+
 const deleteOrderItemBodySchema = z.preprocess(
   (val) =>
     val === undefined || val === null || typeof val !== "object" ? {} : val,
@@ -147,6 +158,23 @@ router.get(
     const { orderId, itemId } = res.locals.validatedParams as OrderItemParams;
     const { buyerId } = res.locals.validatedQuery as OptionalBuyerQuery;
     const result = await getOrderItem(orderId, itemId, buyerId);
+    res.json(result);
+  }),
+);
+
+router.patch(
+  "/orders/:orderId/items/:itemId/rating",
+  validateParams(orderItemParamsSchema),
+  validateBody(patchOrderItemRatingBodySchema),
+  asyncHandler(async (req, res) => {
+    const { orderId, itemId } = res.locals.validatedParams as OrderItemParams;
+    const body = req.body as PatchOrderItemRatingBody;
+    const result = await patchOrderItemRating({
+      orderId,
+      itemId,
+      buyerId: body.buyerId,
+      rating: body.rating,
+    });
     res.json(result);
   }),
 );

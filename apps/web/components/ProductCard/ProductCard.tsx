@@ -5,13 +5,20 @@ import {
   Card,
   CardContent,
   CardActions,
-  CardMedia,
   Typography,
   Button,
+  Rating,
+  Box,
 } from "@mui/material";
 import ProductDetailModal from "@/components/ProductDetailModal/ProductDetailModal";
+import ProductCardImage from "@/components/ProductCard/ProductCardImage";
 import type { ProductListItem } from "@/lib/api/products";
-import { parseProductPrice, productImageUrl } from "@/lib/product-helpers";
+import { useProductRating } from "@/hooks/useProductRating";
+import {
+  formatProductRating,
+  parseProductPrice,
+  parseProductRating,
+} from "@/lib/product-helpers";
 
 type ProductCardProps = {
   product: ProductListItem;
@@ -30,6 +37,8 @@ const ProductCard = ({
   const isManageRoute = pathname === "/manage";
   const [open, setOpen] = useState(false);
   const price = parseProductPrice(product.price);
+  const { rating: ratingValue } = useProductRating(product.id);
+  const productRating = parseProductRating(ratingValue);
   const isInactive = product.status === "inactive";
 
   return (
@@ -58,12 +67,9 @@ const ProductCard = ({
           }),
         }}
       >
-        <CardMedia
-          component="img"
-          height="180"
-          image={productImageUrl(product.mainImageUrl)}
+        <ProductCardImage
+          mainImageUrl={product.mainImageUrl}
           alt={product.title}
-          sx={{ objectFit: "cover" }}
         />
 
         <CardContent sx={{ padding: "16px" }}>
@@ -81,6 +87,25 @@ const ProductCard = ({
           >
             {product.title}
           </Typography>
+
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 0.5,
+              mb: 1,
+            }}
+          >
+            <Rating
+              value={productRating}
+              precision={0.5}
+              readOnly
+              size="small"
+            />
+            <Typography variant="caption" sx={{ color: "rgb(131, 148, 189)" }}>
+              ({formatProductRating(ratingValue)}/5)
+            </Typography>
+          </Box>
 
           <Typography
             variant="h5"
