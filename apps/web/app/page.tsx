@@ -1,7 +1,28 @@
 "use client";
+
+import { useEffect, useState } from "react";
 import { Button, Box, Typography } from "@mui/material";
+import { getAuthSession } from "@/lib/api/auth";
+import { hasAdminRole } from "@/lib/route-access";
 
 export default function Home() {
+  const [showManage, setShowManage] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    getAuthSession()
+      .then((session) => {
+        if (cancelled) return;
+        setShowManage(session.authenticated && hasAdminRole(session.roles));
+      })
+      .catch(() => {
+        if (!cancelled) setShowManage(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <Box
       sx={{
@@ -79,6 +100,26 @@ export default function Home() {
         >
           Vender
         </Button>
+
+        {showManage ? (
+          <Button
+            variant="contained"
+            size="large"
+            href="/manage"
+            sx={{
+              textTransform: "none",
+              px: 5,
+              py: 1.5,
+              borderRadius: "12px",
+              fontSize: "1.1rem",
+              fontWeight: "bold",
+              backgroundColor: "rgb(0, 0, 0)",
+              "&:hover": { backgroundColor: "rgb(37, 39, 43)" },
+            }}
+          >
+            Manage
+          </Button>
+        ) : null}
       </Box>
     </Box>
   );

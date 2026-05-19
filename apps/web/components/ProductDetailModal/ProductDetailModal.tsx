@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Typography,
   Box,
@@ -7,33 +8,81 @@ import {
   Button,
   Chip,
   Divider,
-  Rating,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   IconButton,
-  CircularProgress,
+  Rating,
+  Snackbar,
+  Alert,
 } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import CloseIcon from "@mui/icons-material/Close";
 import RemoveIcon from "@mui/icons-material/Remove";
-import { productType } from "@/types/types";
+import type { ProductListItem, ProductStatus } from "@/lib/api/products";
+import { updateProduct } from "@/lib/api/products";
+import { isApiError } from "@/lib/api/client";
 import { useCart } from "@/context/CartContext";
 import ChatButton from "../ChatButton/ChatButton";
-import { getProductById } from "@/lib/api/products";
+import {
+  conditionLabel,
+  formatSellerReputationOutOf5,
+  parseProductPrice,
+  productStatusChipColor,
+  productStatusLabel,
+  sellerReputationOutOf5,
+  productImageUrl,
+} from "@/lib/product-helpers";
 
 type ProductDetailModalProps = {
   open: boolean;
   onClose: () => void;
-  product: productType;
+  product: ProductListItem;
+  manageMode?: boolean;
 };
 
 const ProductDetailModal = ({
   open,
   onClose,
   product,
+  manageMode = false,
 }: ProductDetailModalProps) => {
-  const inStock = product.stock > 0;
+  const router = useRouter();
+  const [localProduct, setLocalProduct] = useState<ProductListItem | null>(
+    null,
+  );
   const [amount, setAmount] = useState(1);
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [pendingStatus, setPendingStatus] = useState<ProductStatus | null>(
+    null,
+  );
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
+
+  const displayProduct = localProduct ?? product;
+
+  const handleClose = () => {
+    setLocalProduct(null);
+    setAmount(1);
+    setStatusError(null);
+    onClose();
+  };
+
+  const inStock = displayProduct.inventory > 0;
+  const price = parseProductPrice(displayProduct.price);
+  const sellerReputation = sellerReputationOutOf5(
+    displayProduct.sellerReputation,
+  );
+  const statusActionLabel =
+    displayProduct.status === "active" ? "Inactivate" : "Activate";
+  const nextStatus: ProductStatus =
+    displayProduct.status === "active" ? "inactive" : "active";
 
   const increase = () => {
-    if (amount < product.stock) setAmount(amount + 1);
+    if (amount < displayProduct.inventory) setAmount(amount + 1);
   };
 
   const decrease = () => {
@@ -41,239 +90,418 @@ const ProductDetailModal = ({
   };
 
   const { addToCart } = useCart();
-  const [description, setDescription] = useState<string | null>(null);
-  const [descLoading, setDescLoading] = useState(false);
 
-  useEffect(() => {
-    if (!open) return;
-    const run = async () => {
-      setDescription(null);
-      setDescLoading(true);
-      try {
-        const res = await getProductById(product.id);
-        setDescription(res.data.description);
-      } catch {
-        setDescription(null);
-      } finally {
-        setDescLoading(false);
-      }
-    };
-    void run();
-  }, [open, product.id]);
+  const handleStatusButtonClick = () => {
+    setStatusError(null);
+    setPendingStatus(nextStatus);
+    setStatusDialogOpen(true);
+  };
+
+  const handleStatusConfirm = async () => {
+    if (!pendingStatus) return;
+    setIsUpdatingStatus(true);
+    setStatusError(null);
+    try {
+      const result = await updateProduct(displayProduct.id, {
+        sellerId: displayProduct.sellerId,
+        status: pendingStatus,
+      });
+      setLocalProduct(result.data);
+      setStatusDialogOpen(false);
+      setSuccessToast(
+        pendingStatus === "active"
+          ? "Producto activado exitósamente"
+          : "Producto inactivado exitósamente",
+      );
+      setPendingStatus(null);
+      router.refresh();
+    } catch (e) {
+      const message = isApiError(e)
+        ? e.message
+        : "Could not update product status. Please try again.";
+      setStatusError(message);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  const statusDialogTitle =
+    pendingStatus === "active" ? "Activate product?" : "Inactivate product?";
+  const statusDialogVerb =
+    pendingStatus === "active" ? "activate" : "inactivate";
 
   return (
-    <Modal open={open} onClose={onClose}>
-      <Box
-        sx={{
-          position: "absolute",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: { xs: "90%", sm: 500 },
-          bgcolor: "rgb(254, 254, 254)",
-          borderRadius: "16px",
-          boxShadow: "0px 8px 40px rgba(76, 98, 153, 0.3)",
-          p: 4,
-          outline: "none",
-        }}
-      >
-        {/* Image */}
-        <Box
-          component="img"
-          src={product.image}
-          alt={product.name}
-          sx={{
-            width: "100%",
-            height: 220,
-            objectFit: "cover",
-            borderRadius: "10px",
-            mb: 2,
-          }}
-        />
-
-        {/* Condition + Rating row */}
+    <>
+      <Modal open={open} onClose={handleClose}>
         <Box
           sx={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            mb: 1,
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: { xs: "90%", sm: 500 },
+            bgcolor: "rgb(254, 254, 254)",
+            borderRadius: "16px",
+            boxShadow: "0px 8px 40px rgba(76, 98, 153, 0.3)",
+            p: 4,
+            outline: "none",
           }}
         >
-          <Chip
-            label={product.condition === "new" ? "New" : "Used"}
+          <IconButton
+            onClick={handleClose}
+            aria-label="Close"
             size="small"
             sx={{
-              backgroundColor:
-                product.condition === "new"
-                  ? "rgb(24, 62, 157)"
-                  : "rgb(131, 148, 189)",
-              color: "rgb(254, 254, 254)",
-              fontWeight: "bold",
-            }}
-          />
-          <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-            <Rating
-              value={product.rating}
-              precision={0.5}
-              readOnly
-              size="small"
-            />
-            <Typography variant="body2" sx={{ color: "rgb(131, 148, 189)" }}>
-              ({product.rating})
-            </Typography>
-          </Box>
-        </Box>
-
-        {/* Title */}
-        <Typography
-          variant="h5"
-          sx={{ fontWeight: "bold", color: "rgb(0, 28, 100)", mb: 1 }}
-        >
-          {product.name}
-        </Typography>
-
-        {/* Price */}
-        <Typography
-          variant="h4"
-          sx={{ color: "rgb(29, 54, 120)", fontWeight: "bold", mb: 2 }}
-        >
-          ${product.price.toFixed(2)}
-        </Typography>
-
-        <Divider sx={{ borderColor: "rgb(189, 197, 217)", mb: 2 }} />
-
-        {/* Description */}
-        {descLoading ? (
-          <Box sx={{ display: "flex", justifyContent: "center", mb: 3 }}>
-            <CircularProgress size={20} sx={{ color: "rgb(24, 62, 157)" }} />
-          </Box>
-        ) : description ? (
-          <Typography
-            variant="body1"
-            sx={{ color: "rgb(76, 98, 153)", mb: 3, lineHeight: 1.8 }}
-          >
-            {description}
-          </Typography>
-        ) : null}
-
-        {/* Stock */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 3 }}>
-          <Typography
-            variant="body2"
-            sx={{ fontWeight: "bold", color: "rgb(0, 28, 100)" }}
-          >
-            Availability:
-          </Typography>
-          <Chip
-            label={inStock ? `${product.stock} in stock` : "Out of stock"}
-            color={inStock ? "success" : "error"}
-            size="small"
-          />
-        </Box>
-
-        {/* Amount selector */}
-        {inStock && (
-          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 3 }}>
-            <Typography
-              variant="body2"
-              sx={{ fontWeight: "bold", color: "rgb(0, 28, 100)" }}
-            >
-              Amount:
-            </Typography>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-              <IconButton
-                onClick={decrease}
-                disabled={amount <= 1}
-                size="small"
-                sx={{
-                  border: "1px solid rgb(24, 62, 157)",
-                  color: "rgb(24, 62, 157)",
-                  "&:disabled": { borderColor: "rgb(189, 197, 217)" },
-                }}
-              >
-                <RemoveIcon fontSize="small" />
-              </IconButton>
-
-              <Typography
-                variant="body1"
-                sx={{
-                  minWidth: "32px",
-                  textAlign: "center",
-                  fontWeight: "bold",
-                  color: "rgb(0, 28, 100)",
-                }}
-              >
-                {amount}
-              </Typography>
-
-              <IconButton
-                onClick={increase}
-                disabled={amount >= product.stock}
-                size="small"
-                sx={{
-                  border: "1px solid rgb(24, 62, 157)",
-                  color: "rgb(24, 62, 157)",
-                  "&:disabled": { borderColor: "rgb(189, 197, 217)" },
-                }}
-              >
-                <AddIcon fontSize="small" />
-              </IconButton>
-            </Box>
-          </Box>
-        )}
-
-        {/* Buttons */}
-        <Box sx={{ display: "flex", gap: 1 }}>
-          <Button
-            variant="outlined"
-            fullWidth
-            onClick={onClose}
-            sx={{
-              textTransform: "none",
-              borderRadius: "10px",
-              py: 1.2,
-              borderColor: "rgb(24, 62, 157)",
-              color: "rgb(24, 62, 157)",
+              position: "absolute",
+              top: 8,
+              right: 8,
+              color: "rgb(131, 148, 189)",
               "&:hover": {
-                borderColor: "rgb(29, 54, 120)",
-                backgroundColor: "rgba(24, 62, 157, 0.05)",
+                color: "rgb(0, 28, 100)",
+                backgroundColor: "rgba(24, 62, 157, 0.08)",
               },
             }}
           >
-            Close
-          </Button>
+            <CloseIcon />
+          </IconButton>
 
-          <Button
-            variant="contained"
-            fullWidth
-            disabled={!inStock}
-            onClick={() => {
-              addToCart(product, amount);
-              onClose();
-            }}
+          <Box
             sx={{
-              textTransform: "none",
-              borderRadius: "10px",
-              py: 1.2,
-              backgroundColor: "rgb(24, 62, 157)",
-              "&:hover": { backgroundColor: "rgb(29, 54, 120)" },
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              mb: 1,
+              minWidth: 0,
             }}
           >
-            Add to Cart
-          </Button>
-        </Box>
-        <Box sx={{ mt: 1 }}>
-          <ChatButton
-            variant="modal"
-            onClick={() => {
-              window.dispatchEvent(new CustomEvent("openChatDrawer"));
-              onClose();
+            <Chip
+              label={conditionLabel(displayProduct.condition)}
+              size="small"
+              sx={{
+                flexShrink: 0,
+                backgroundColor:
+                  displayProduct.condition === "new"
+                    ? "rgb(24, 62, 157)"
+                    : "rgb(131, 148, 189)",
+                color: "rgb(254, 254, 254)",
+                fontWeight: "bold",
+              }}
+            />
+            <Typography
+              variant="h5"
+              sx={{
+                fontWeight: "bold",
+                color: "rgb(0, 28, 100)",
+                flex: 1,
+                minWidth: 0,
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {displayProduct.title}
+            </Typography>
+          </Box>
+
+          <Box
+            component="img"
+            src={productImageUrl(displayProduct.mainImageUrl)}
+            alt={displayProduct.title}
+            sx={{
+              width: "100%",
+              height: 220,
+              objectFit: "cover",
+              borderRadius: "10px",
+              mb: 2,
             }}
           />
+
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 1,
+              mb: 2,
+              minWidth: 0,
+            }}
+          >
+            <Typography
+              variant="h4"
+              sx={{ color: "rgb(29, 54, 120)", fontWeight: "bold" }}
+            >
+              ${price.toFixed(2)}
+            </Typography>
+            <Chip
+              label={productStatusLabel(displayProduct.status)}
+              size="small"
+              color={productStatusChipColor(displayProduct.status)}
+              sx={{ flexShrink: 0, fontWeight: "bold" }}
+            />
+          </Box>
+
+          <Divider sx={{ borderColor: "rgb(189, 197, 217)", mb: 2 }} />
+
+          <Typography
+            variant="body1"
+            sx={{ color: "rgb(76, 98, 153)", mb: 2, lineHeight: 1.8 }}
+          >
+            {displayProduct.description}
+          </Typography>
+
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              mb: 3,
+              flexWrap: "nowrap",
+              overflow: "hidden",
+            }}
+          >
+            <Typography
+              variant="body2"
+              component="span"
+              sx={{
+                fontWeight: "bold",
+                color: "rgb(0, 28, 100)",
+                flexShrink: 0,
+              }}
+            >
+              Sold By:
+            </Typography>
+            <Typography
+              variant="body2"
+              component="span"
+              noWrap
+              sx={{ color: "rgb(76, 98, 153)", flexShrink: 1, minWidth: 0 }}
+            >
+              {displayProduct.sellerUserName}
+            </Typography>
+            <Rating
+              value={sellerReputation}
+              precision={0.5}
+              readOnly
+              size="small"
+              sx={{ flexShrink: 0 }}
+            />
+            <Typography
+              variant="body2"
+              component="span"
+              sx={{ color: "rgb(131, 148, 189)", flexShrink: 0 }}
+            >
+              ({formatSellerReputationOutOf5(displayProduct.sellerReputation)}
+              /5)
+            </Typography>
+          </Box>
+
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              mb: 3,
+              flexWrap: "nowrap",
+              justifyContent: "space-between",
+            }}
+          >
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                flexShrink: 0,
+              }}
+            >
+              <Typography
+                variant="body2"
+                sx={{ fontWeight: "bold", color: "rgb(0, 28, 100)" }}
+              >
+                Availability:
+              </Typography>
+              <Chip
+                label={
+                  inStock
+                    ? `${displayProduct.inventory} in stock`
+                    : "Out of stock"
+                }
+                color={inStock ? "success" : "error"}
+                size="small"
+              />
+            </Box>
+
+            {inStock && (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  flexShrink: 0,
+                }}
+              >
+                <Typography
+                  variant="body2"
+                  sx={{ fontWeight: "bold", color: "rgb(0, 28, 100)" }}
+                >
+                  Amount:
+                </Typography>
+                <IconButton
+                  onClick={decrease}
+                  disabled={amount <= 1}
+                  size="small"
+                  sx={{
+                    border: "1px solid rgb(24, 62, 157)",
+                    color: "rgb(24, 62, 157)",
+                    "&:disabled": { borderColor: "rgb(189, 197, 217)" },
+                  }}
+                >
+                  <RemoveIcon fontSize="small" />
+                </IconButton>
+
+                <Typography
+                  variant="body1"
+                  sx={{
+                    minWidth: "32px",
+                    textAlign: "center",
+                    fontWeight: "bold",
+                    color: "rgb(0, 28, 100)",
+                  }}
+                >
+                  {amount}
+                </Typography>
+
+                <IconButton
+                  onClick={increase}
+                  disabled={amount >= displayProduct.inventory}
+                  size="small"
+                  sx={{
+                    border: "1px solid rgb(24, 62, 157)",
+                    color: "rgb(24, 62, 157)",
+                    "&:disabled": { borderColor: "rgb(189, 197, 217)" },
+                  }}
+                >
+                  <AddIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            )}
+          </Box>
+
+          <Box sx={{ display: "flex", gap: 1, alignItems: "stretch" }}>
+            {manageMode ? (
+              <Button
+                variant="contained"
+                onClick={handleStatusButtonClick}
+                sx={{
+                  flex: 1,
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  py: 1.2,
+                  backgroundColor: "rgb(24, 62, 157)",
+                  "&:hover": { backgroundColor: "rgb(29, 54, 120)" },
+                }}
+              >
+                {statusActionLabel}
+              </Button>
+            ) : (
+              <Button
+                variant="contained"
+                disabled={!inStock}
+                onClick={() => {
+                  addToCart(displayProduct, amount);
+                  handleClose();
+                }}
+                sx={{
+                  flex: 1,
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  py: 1.2,
+                  backgroundColor: "rgb(24, 62, 157)",
+                  "&:hover": { backgroundColor: "rgb(29, 54, 120)" },
+                }}
+              >
+                Add to Cart
+              </Button>
+            )}
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <ChatButton
+                variant="modal"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent("openChatDrawer"));
+                  handleClose();
+                }}
+              />
+            </Box>
+          </Box>
         </Box>
-      </Box>
-    </Modal>
+      </Modal>
+
+      <Dialog
+        open={statusDialogOpen}
+        onClose={() => {
+          if (!isUpdatingStatus) {
+            setStatusDialogOpen(false);
+            setPendingStatus(null);
+            setStatusError(null);
+          }
+        }}
+      >
+        <DialogTitle>{statusDialogTitle}</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to {statusDialogVerb}{" "}
+            <strong>{displayProduct.title}</strong>?
+          </DialogContentText>
+          {statusError && (
+            <Typography variant="body2" sx={{ color: "error.main", mt: 1 }}>
+              {statusError}
+            </Typography>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={() => {
+              setStatusDialogOpen(false);
+              setPendingStatus(null);
+              setStatusError(null);
+            }}
+            disabled={isUpdatingStatus}
+            sx={{ textTransform: "none" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="outlined"
+            color="primary"
+            onClick={handleStatusConfirm}
+            disabled={isUpdatingStatus}
+            sx={{ textTransform: "none", color: "rgb(24, 62, 157)" }}
+          >
+            {isUpdatingStatus ? "Updating…" : statusActionLabel}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar
+        open={Boolean(successToast)}
+        autoHideDuration={3000}
+        onClose={(_, reason) => {
+          if (reason === "clickaway") return;
+          setSuccessToast(null);
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSuccessToast(null)}
+          severity="success"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {successToast}
+        </Alert>
+      </Snackbar>
+    </>
   );
 };
 

@@ -1,24 +1,16 @@
-export type productType = {
-  /** Catalog UUID from API, or a stable string id for mock data. */
-  id: string;
-  name: string;
-  price: number;
-  description: string;
-  stock: number;
-  rating: number;
-  condition: "new" | "used";
-  image: string;
-};
+import type { ProductListItem } from "@/lib/api/products";
+
+export type ProductType = ProductListItem;
 
 export type CartItem = {
-  product: productType;
+  product: ProductListItem;
   amount: number;
   selected: boolean;
 };
 
 export type CartContextType = {
   items: CartItem[];
-  addToCart: (product: productType, amount: number) => void;
+  addToCart: (product: ProductListItem, amount: number) => void;
   removeFromCart: (productId: string) => void;
   updateAmount: (productId: string, amount: number) => void;
   toggleSelected: (productId: string) => void;

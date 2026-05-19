@@ -7,6 +7,8 @@ export type MpSessionPayload = {
   userId?: string;
   institutionalEmail?: string;
   username?: string;
+  roles?: string[];
+  role?: string;
 };
 
 export function decodeMpSessionJwtPayload(

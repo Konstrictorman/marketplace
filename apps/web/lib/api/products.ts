@@ -16,6 +16,7 @@ export type ProductListItem = {
   sellerId: string;
   categoryId: string;
   title: string;
+  description: string;
   price: string;
   condition: ProductCondition;
   inventory: number;
@@ -24,11 +25,13 @@ export type ProductListItem = {
   updatedAt: string;
   /** Resolved gallery image: `isMain` first, else lowest `sortOrder`. */
   mainImageUrl: string | null;
+  /** Seller display name (`users.name`). */
+  sellerUserName: string;
+  /** Seller reputation stored 0–10 as decimal string; UI shows /5. */
+  sellerReputation: string;
 };
 
-export type Product = ProductListItem & {
-  description: string;
-};
+export type Product = ProductListItem;
 
 export type ProductImage = {
   id: string;

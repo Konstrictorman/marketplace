@@ -5,6 +5,7 @@ import "./globals.css";
 import NavBar from "@/components/NavBar/NavBar";
 import { CartProvider } from "@/context/CartContext";
 import { NotificationsProvider } from "@/context/NotificationContext";
+import Breadcrumbs from "@/components/Breadcrumbs/Breadcrumbs";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,6 +56,7 @@ export default function RootLayout({
         <CartProvider>
           <NotificationsProvider>
             <NavBar />
+            <Breadcrumbs />
             <main
               className="flex-1 flex flex-col"
               style={{

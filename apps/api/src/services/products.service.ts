@@ -31,7 +31,23 @@ type ProductRow = {
   updatedAt: Date;
 };
 
-function mapProduct(product: ProductRow, mainImageUrl: string | null = null) {
+type SellerSummary = {
+  name: string;
+  reputation: Prisma.Decimal;
+};
+
+function mapSellerSummary(seller: SellerSummary) {
+  return {
+    sellerUserName: seller.name,
+    sellerReputation: seller.reputation.toString(),
+  };
+}
+
+function mapProduct(
+  product: ProductRow,
+  mainImageUrl: string | null = null,
+  seller?: SellerSummary,
+) {
   return {
     id: product.id,
     sellerId: product.sellerId,
@@ -45,6 +61,7 @@ function mapProduct(product: ProductRow, mainImageUrl: string | null = null) {
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
     mainImageUrl,
+    ...(seller ? mapSellerSummary(seller) : {}),
   };
 }
 
@@ -53,6 +70,7 @@ type ProductListRow = {
   sellerId: string;
   categoryId: string;
   title: string;
+  description: string;
   price: Prisma.Decimal;
   condition: ProductCondition;
   inventory: number;
@@ -60,9 +78,9 @@ type ProductListRow = {
   createdAt: Date;
   updatedAt: Date;
   images: { url: string }[];
+  seller: SellerSummary;
 };
 
-/** List payloads omit heavy `description` (use GET by id when needed). */
 function mapProductListItem(row: ProductListRow) {
   const mainImageUrl = row.images[0]?.url ?? null;
   return {
@@ -70,6 +88,7 @@ function mapProductListItem(row: ProductListRow) {
     sellerId: row.sellerId,
     categoryId: row.categoryId,
     title: row.title,
+    description: row.description,
     price: row.price.toString(),
     condition: row.condition,
     inventory: row.inventory,
@@ -77,6 +96,7 @@ function mapProductListItem(row: ProductListRow) {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     mainImageUrl,
+    ...mapSellerSummary(row.seller),
   };
 }
 
@@ -148,6 +168,7 @@ export async function listProducts(params: ListProductsParams) {
     sellerId: true,
     categoryId: true,
     title: true,
+    description: true,
     price: true,
     condition: true,
     inventory: true,
@@ -163,6 +184,7 @@ export async function listProducts(params: ListProductsParams) {
       take: 1,
       select: { url: true },
     },
+    seller: { select: { name: true, reputation: true } },
   };
 
   const [rows, total] = await prisma.$transaction([
@@ -210,26 +232,44 @@ export async function createProduct(input: CreateProductInput) {
     throw new HttpError(404, "Category not found", "category_not_found");
   }
 
-  const product = await prisma.product.create({
-    data: {
-      sellerId: input.sellerId,
-      categoryId: input.categoryId,
-      title: input.title,
-      description: input.description,
-      price: new Prisma.Decimal(input.price),
-      condition: input.condition,
-      inventory: input.inventory,
-      status: input.status,
-    },
-  });
+  const [product, sellerProfile] = await prisma.$transaction([
+    prisma.product.create({
+      data: {
+        sellerId: input.sellerId,
+        categoryId: input.categoryId,
+        title: input.title,
+        description: input.description,
+        price: new Prisma.Decimal(input.price),
+        condition: input.condition,
+        inventory: input.inventory,
+        status: input.status,
+      },
+    }),
+    prisma.user.findUniqueOrThrow({
+      where: { id: input.sellerId },
+      select: { name: true, reputation: true },
+    }),
+  ]);
 
-  return mapProduct(product, null);
+  return mapProduct(product, null, sellerProfile);
 }
 
 export async function getProductById(id: string) {
   const product = await prisma.product.findUnique({
     where: { id },
-    include: {
+    select: {
+      id: true,
+      sellerId: true,
+      categoryId: true,
+      title: true,
+      description: true,
+      price: true,
+      condition: true,
+      inventory: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      seller: { select: { name: true, reputation: true } },
       images: {
         orderBy: [
           { isMain: Prisma.SortOrder.desc },
@@ -244,8 +284,8 @@ export async function getProductById(id: string) {
   if (!product) {
     throw new HttpError(404, "Product not found", "product_not_found");
   }
-  const { images, ...rest } = product;
-  return mapProduct(rest, images[0]?.url ?? null);
+  const { images, seller, ...rest } = product;
+  return mapProduct(rest, images[0]?.url ?? null, seller);
 }
 
 export type UpdateProductInput = {
@@ -314,7 +354,19 @@ export async function updateProduct(input: UpdateProductInput) {
   const product = await prisma.product.update({
     where: { id: input.id },
     data,
-    include: {
+    select: {
+      id: true,
+      sellerId: true,
+      categoryId: true,
+      title: true,
+      description: true,
+      price: true,
+      condition: true,
+      inventory: true,
+      status: true,
+      createdAt: true,
+      updatedAt: true,
+      seller: { select: { name: true, reputation: true } },
       images: {
         orderBy: [
           { isMain: Prisma.SortOrder.desc },
@@ -327,8 +379,8 @@ export async function updateProduct(input: UpdateProductInput) {
     },
   });
 
-  const { images, ...rest } = product;
-  return mapProduct(rest, images[0]?.url ?? null);
+  const { images, seller, ...rest } = product;
+  return mapProduct(rest, images[0]?.url ?? null, seller);
 }
 
 /** Soft delete: set `status` to `removed`. Idempotent when already removed. */

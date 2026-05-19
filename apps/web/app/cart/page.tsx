@@ -15,6 +15,11 @@ import AddIcon from "@mui/icons-material/Add";
 import RemoveIcon from "@mui/icons-material/Remove";
 import Link from "next/link";
 import { useCart } from "@/context/CartContext";
+import {
+  conditionLabel,
+  parseProductPrice,
+  productImageUrl,
+} from "@/lib/product-helpers";
 import { getAuthSession } from "@/lib/api/auth";
 import { isApiError } from "@/lib/api/client";
 import { useNotifications } from "@/context/NotificationContext";
@@ -34,7 +39,7 @@ export default function CartPage() {
   const { addNotification } = useNotifications();
   const selectedItems = items.filter((item) => item.selected);
   const total = selectedItems.reduce(
-    (sum, item) => sum + item.product.price * item.amount,
+    (sum, item) => sum + parseProductPrice(item.product.price) * item.amount,
     0,
   );
   const allSelected = items.length > 0 && items.every((item) => item.selected);
@@ -172,8 +177,8 @@ export default function CartPage() {
                 />
                 <CardMedia
                   component="img"
-                  image={item.product.image}
-                  alt={item.product.name}
+                  image={productImageUrl(item.product.mainImageUrl)}
+                  alt={item.product.title}
                   sx={{
                     width: 80,
                     height: 80,
@@ -186,13 +191,13 @@ export default function CartPage() {
                     variant="body1"
                     sx={{ fontWeight: "bold", color: "rgb(0, 28, 100)" }}
                   >
-                    {item.product.name}
+                    {item.product.title}
                   </Typography>
                   <Typography
                     variant="body2"
                     sx={{ color: "rgb(131, 148, 189)" }}
                   >
-                    {item.product.condition === "new" ? "New" : "Used"}
+                    {conditionLabel(item.product.condition)}
                   </Typography>
                   <Typography
                     variant="body1"
@@ -202,7 +207,7 @@ export default function CartPage() {
                       mt: 0.5,
                     }}
                   >
-                    ${item.product.price.toFixed(2)}
+                    ${parseProductPrice(item.product.price).toFixed(2)}
                   </Typography>
                 </Box>
 
@@ -237,7 +242,7 @@ export default function CartPage() {
                     onClick={() =>
                       updateAmount(item.product.id, item.amount + 1)
                     }
-                    disabled={item.amount >= item.product.stock}
+                    disabled={item.amount >= item.product.inventory}
                     sx={{
                       border: "1px solid rgb(24, 62, 157)",
                       color: "rgb(24, 62, 157)",
@@ -257,7 +262,10 @@ export default function CartPage() {
                     textAlign: "right",
                   }}
                 >
-                  ${(item.product.price * item.amount).toFixed(2)}
+                  $
+                  {(
+                    parseProductPrice(item.product.price) * item.amount
+                  ).toFixed(2)}
                 </Typography>
 
                 <IconButton
@@ -304,13 +312,16 @@ export default function CartPage() {
                   sx={{ color: "rgb(76, 98, 153)", maxWidth: "170px" }}
                   noWrap
                 >
-                  {item.product.name} x{item.amount}
+                  {item.product.title} x{item.amount}
                 </Typography>
                 <Typography
                   variant="body2"
                   sx={{ color: "rgb(0, 28, 100)", fontWeight: "bold" }}
                 >
-                  ${(item.product.price * item.amount).toFixed(2)}
+                  $
+                  {(
+                    parseProductPrice(item.product.price) * item.amount
+                  ).toFixed(2)}
                 </Typography>
               </Box>
             ))}
