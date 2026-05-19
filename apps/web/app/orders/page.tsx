@@ -10,15 +10,20 @@ import {
   Collapse,
   Divider,
   IconButton,
+  Rating,
   Snackbar,
   Typography,
 } from "@mui/material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import Link from "next/link";
 import { getAuthSession } from "@/lib/api/auth";
-import { listOrders, getOrderById } from "@/lib/api/orders";
+import {
+  listOrders,
+  getOrderById,
+  patchOrderItemRating,
+} from "@/lib/api/orders";
 import { getProductById } from "@/lib/api/products";
-import type { OrderSummary, OrderDetail } from "@/lib/api/orders";
+import type { OrderSummary, OrderDetail, OrderStatus } from "@/lib/api/orders";
 
 const statusColor = (status: string) => {
   switch (status) {
@@ -39,6 +44,8 @@ const statusLabel = (status: string) => {
   switch (status) {
     case "pending":
       return "Pendiente";
+    case "confirmed":
+      return "Confirmado";
     case "paid":
       return "Pagado";
     case "shipped":
@@ -51,6 +58,8 @@ const statusLabel = (status: string) => {
       return status;
   }
 };
+
+const RATEABLE_STATUSES: OrderStatus[] = ["confirmed", "delivered"];
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -68,6 +77,14 @@ export default function OrdersPage() {
   const [productNames, setProductNames] = useState<Record<string, string>>({});
   const [expandLoading, setExpandLoading] = useState(false);
   const [expandError, setExpandError] = useState<string | null>(null);
+
+  // rating state: keyed by itemId
+  const [ratingDraft, setRatingDraft] = useState<Record<string, number>>({});
+  const [ratingSubmitting, setRatingSubmitting] = useState<
+    Record<string, boolean>
+  >({});
+  const [ratingError, setRatingError] = useState<string | null>(null);
+  const [ratingSuccess, setRatingSuccess] = useState(false);
 
   const pageSize = 10;
 
@@ -141,6 +158,39 @@ export default function OrdersPage() {
     }
   };
 
+  const handleRate = async (orderId: string, itemId: string, value: number) => {
+    if (!buyerId) return;
+    const run = async () => {
+      setRatingSubmitting((prev) => ({ ...prev, [itemId]: true }));
+      try {
+        const res = await patchOrderItemRating(orderId, itemId, {
+          buyerId,
+          rating: value,
+        });
+        // update the item in local state so the stars become read-only
+        setOrderDetails((prev) => {
+          const order = prev[orderId];
+          if (!order) return prev;
+          return {
+            ...prev,
+            [orderId]: {
+              ...order,
+              items: order.items.map((i) =>
+                i.id === itemId ? { ...i, rating: res.data.rating } : i,
+              ),
+            },
+          };
+        });
+        setRatingSuccess(true);
+      } catch {
+        setRatingError("No se pudo guardar la calificación.");
+      } finally {
+        setRatingSubmitting((prev) => ({ ...prev, [itemId]: false }));
+      }
+    };
+    void run();
+  };
+
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-6 px-4 py-10">
       <header className="border-b border-zinc-200 pb-6 dark:border-zinc-700">
@@ -182,6 +232,7 @@ export default function OrdersPage() {
           {orders.map((order) => {
             const isExpanded = expandedOrderId === order.id;
             const detail = orderDetails[order.id];
+            const canRate = RATEABLE_STATUSES.includes(order.status);
 
             return (
               <Card
@@ -296,54 +347,130 @@ export default function OrdersPage() {
                         sx={{
                           display: "flex",
                           flexDirection: "column",
-                          gap: 1,
+                          gap: 2,
                         }}
                       >
-                        {detail.items.map((item) => (
-                          <Box
-                            key={item.id}
-                            sx={{
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
-                            }}
-                          >
-                            <Box>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  fontWeight: 600,
-                                  color: "rgb(0, 28, 100)",
-                                }}
-                              >
-                                {productNames[item.productId] ?? "Cargando…"}
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                sx={{
-                                  color: "rgb(131, 148, 189)",
-                                  fontSize: "0.75rem",
-                                }}
-                              >
-                                Cantidad: {item.quantity} · Precio unitario: $
-                                {Number(item.unitPrice).toLocaleString("es-CO")}
-                              </Typography>
-                            </Box>
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                fontWeight: 700,
-                                color: "rgb(29, 54, 120)",
-                              }}
-                            >
-                              ${Number(item.subtotal).toLocaleString("es-CO")}
-                            </Typography>
-                          </Box>
-                        ))}
+                        {detail.items.map((item) => {
+                          const alreadyRated = item.rating !== null;
+                          const isSubmitting =
+                            ratingSubmitting[item.id] ?? false;
+                          const draft = ratingDraft[item.id] ?? 0;
 
-                        <Divider
-                          sx={{ borderColor: "rgb(220, 226, 240)", mt: 1 }}
-                        />
+                          return (
+                            <Box key={item.id}>
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <Box>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      fontWeight: 600,
+                                      color: "rgb(0, 28, 100)",
+                                    }}
+                                  >
+                                    {productNames[item.productId] ??
+                                      "Cargando…"}
+                                  </Typography>
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      color: "rgb(131, 148, 189)",
+                                      fontSize: "0.75rem",
+                                    }}
+                                  >
+                                    Cantidad: {item.quantity} · Precio unitario:
+                                    $
+                                    {Number(item.unitPrice).toLocaleString(
+                                      "es-CO",
+                                    )}
+                                  </Typography>
+                                </Box>
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    fontWeight: 700,
+                                    color: "rgb(29, 54, 120)",
+                                  }}
+                                >
+                                  $
+                                  {Number(item.subtotal).toLocaleString(
+                                    "es-CO",
+                                  )}
+                                </Typography>
+                              </Box>
+
+                              {/* Rating row */}
+                              {canRate && (
+                                <Box
+                                  sx={{
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: 1,
+                                    mt: 0.75,
+                                  }}
+                                >
+                                  {alreadyRated ? (
+                                    <>
+                                      <Rating
+                                        value={Number(item.rating)}
+                                        precision={0.5}
+                                        readOnly
+                                        size="small"
+                                      />
+                                      <Typography
+                                        variant="caption"
+                                        sx={{ color: "rgb(131, 148, 189)" }}
+                                      >
+                                        Tu calificación: {item.rating}
+                                      </Typography>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Rating
+                                        value={draft}
+                                        precision={0.5}
+                                        size="small"
+                                        disabled={isSubmitting}
+                                        onChange={(_, newValue) => {
+                                          if (newValue === null) return;
+                                          setRatingDraft((prev) => ({
+                                            ...prev,
+                                            [item.id]: newValue,
+                                          }));
+                                          void handleRate(
+                                            order.id,
+                                            item.id,
+                                            newValue,
+                                          );
+                                        }}
+                                      />
+                                      {isSubmitting ? (
+                                        <CircularProgress
+                                          size={14}
+                                          sx={{ color: "rgb(24, 62, 157)" }}
+                                        />
+                                      ) : (
+                                        <Typography
+                                          variant="caption"
+                                          sx={{ color: "rgb(131, 148, 189)" }}
+                                        >
+                                          Califica este producto
+                                        </Typography>
+                                      )}
+                                    </>
+                                  )}
+                                </Box>
+                              )}
+                            </Box>
+                          );
+                        })}
+
+                        <Divider sx={{ borderColor: "rgb(220, 226, 240)" }} />
                         <Box
                           sx={{ display: "flex", justifyContent: "flex-end" }}
                         >
@@ -416,6 +543,44 @@ export default function OrdersPage() {
           sx={{ width: "100%" }}
         >
           {expandError}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={Boolean(ratingError)}
+        autoHideDuration={3000}
+        onClose={(_, reason) => {
+          if (reason === "clickaway") return;
+          setRatingError(null);
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setRatingError(null)}
+          severity="error"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {ratingError}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={ratingSuccess}
+        autoHideDuration={2500}
+        onClose={(_, reason) => {
+          if (reason === "clickaway") return;
+          setRatingSuccess(false);
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setRatingSuccess(false)}
+          severity="success"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          ¡Calificación guardada!
         </Alert>
       </Snackbar>
     </div>

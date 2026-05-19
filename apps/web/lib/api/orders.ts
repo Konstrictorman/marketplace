@@ -5,6 +5,7 @@ export type OrderStatus =
   | "pending"
   | "cancelled"
   | "paid"
+  | "confirmed"
   | "shipped"
   | "delivered";
 
