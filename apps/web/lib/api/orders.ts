@@ -16,6 +16,8 @@ export type OrderItem = {
   quantity: number;
   unitPrice: string;
   subtotal: string;
+  /** Buyer product rating 0–5; `null` until set via `PATCH .../rating`. */
+  rating: string | null;
   createdAt: string;
 };
 
@@ -69,6 +71,12 @@ export type AddOrderItemBody = {
 export type PatchOrderItemBody = {
   buyerId?: string;
   quantity: number;
+};
+
+export type PatchOrderItemRatingBody = {
+  buyerId?: string;
+  /** Product rating after purchase (0–5). */
+  rating: number;
 };
 
 export type DeleteOrderItemBody = {
@@ -154,6 +162,19 @@ export async function patchOrderItem(
 ) {
   const { data } = await apiClient.patch<{ data: OrderDetail }>(
     `/api/orders/${orderId}/items/${itemId}`,
+    body,
+  );
+  return data;
+}
+
+/** Set or update product rating on a line item (`confirmed` or `delivered` orders). */
+export async function patchOrderItemRating(
+  orderId: string,
+  itemId: string,
+  body: PatchOrderItemRatingBody,
+) {
+  const { data } = await apiClient.patch<{ data: OrderItem }>(
+    `/api/orders/${orderId}/items/${itemId}/rating`,
     body,
   );
   return data;

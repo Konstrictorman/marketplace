@@ -1,7 +1,10 @@
 "use client";
 import { useEffect, useState, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Avatar, Button, Skeleton } from "@mui/material";
+import HomeIcon from "@mui/icons-material/Home";
+import ShoppingBasketIcon from "@mui/icons-material/ShoppingBasket";
+import { Avatar, IconButton, Skeleton } from "@mui/material";
+import Link from "next/link";
 import ShoppingCart from "../ShoppingCart/ShoppingCart";
 import { getAuthSession, logout, type AuthSessionData } from "@/lib/api/auth";
 import NotificationsButton from "../NotificationButton/NotificationButton";
@@ -22,6 +25,8 @@ export default function NavBar() {
   const islogin = pathname === "/login";
   const isshop = pathname === "/shop";
   const isregister = pathname === "/register";
+  const ismanage = pathname === "/manage";
+  const showProductSearch = isshop || ismanage;
 
   const unreadMessageCount = notifications.filter(
     (n) => n.type === "message",
@@ -85,27 +90,23 @@ export default function NavBar() {
         }}
       >
         {/* Left side — links */}
-        <Button
+        <IconButton
+          component={Link}
           href="/"
-          style={{
-            color: "rgb(254, 254, 254)",
-            textDecoration: "none",
-            fontWeight: "500",
-          }}
+          aria-label="Home"
+          sx={{ color: "rgb(254, 254, 254)" }}
         >
-          Home
-        </Button>
+          <HomeIcon />
+        </IconButton>
         {session?.authenticated && !islogin && !isregister && (
-          <Button
+          <IconButton
+            component={Link}
             href="/orders"
-            style={{
-              color: "rgb(254, 254, 254)",
-              textDecoration: "none",
-              fontWeight: "500",
-            }}
+            aria-label="My orders"
+            sx={{ color: "rgb(254, 254, 254)" }}
           >
-            Mis Pedidos
-          </Button>
+            <ShoppingBasketIcon />
+          </IconButton>
         )}
         <Suspense
           fallback={
@@ -120,7 +121,7 @@ export default function NavBar() {
             />
           }
         >
-          {isshop && <SearchBar />}
+          {showProductSearch && <SearchBar />}
         </Suspense>
 
         {/* Spacer */}
@@ -136,42 +137,38 @@ export default function NavBar() {
           />
         )}
         {session?.authenticated && (
-          <Avatar
-            aria-label={
-              session?.authenticated
-                ? `Signed in (${session.initials})`
-                : "Not signed in"
-            }
-            sx={{
-              width: 32,
-              height: 32,
-              fontSize: "0.8125rem",
-              fontWeight: 600,
-              bgcolor: "rgb(189, 197, 217)",
-              color: "rgb(24, 62, 157)",
-            }}
-          >
-            {session?.authenticated ? session.initials : "?"}
-          </Avatar>
-        )}
-        {session?.authenticated && !islogin && !isregister && (
-          <button
-            type="button"
-            onClick={() => void handleLogout()}
-            style={{
-              background: "none",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
-              color: "rgb(189, 197, 217)",
-              textDecoration: "none",
-              fontWeight: "500",
-              fontSize: "0.9rem",
-              fontFamily: "inherit",
-            }}
-          >
-            Log out
-          </button>
+          <>
+            <Avatar
+              aria-label={`Signed in (${session.initials})`}
+              sx={{
+                width: 32,
+                height: 32,
+                fontSize: "0.8125rem",
+                fontWeight: 600,
+                bgcolor: "rgb(189, 197, 217)",
+                color: "rgb(24, 62, 157)",
+              }}
+            >
+              {session.initials}
+            </Avatar>
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                color: "rgb(189, 197, 217)",
+                textDecoration: "none",
+                fontWeight: "500",
+                fontSize: "0.9rem",
+                fontFamily: "inherit",
+              }}
+            >
+              Log out
+            </button>
+          </>
         )}
       </nav>
 

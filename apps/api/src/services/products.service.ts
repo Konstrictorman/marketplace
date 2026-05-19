@@ -31,7 +31,21 @@ type ProductRow = {
   updatedAt: Date;
 };
 
-function mapProduct(product: ProductRow, mainImageUrl: string | null = null) {
+type SellerSummary = {
+  name: string;
+};
+
+function mapSellerSummary(seller: SellerSummary) {
+  return {
+    sellerUserName: seller.name,
+  };
+}
+
+function mapProduct(
+  product: ProductRow,
+  mainImageUrl: string | null = null,
+  seller?: SellerSummary,
+) {
   return {
     id: product.id,
     sellerId: product.sellerId,
@@ -45,6 +59,7 @@ function mapProduct(product: ProductRow, mainImageUrl: string | null = null) {
     createdAt: product.createdAt.toISOString(),
     updatedAt: product.updatedAt.toISOString(),
     mainImageUrl,
+    ...(seller ? mapSellerSummary(seller) : {}),
   };
 }
 
@@ -53,6 +68,7 @@ type ProductListRow = {
   sellerId: string;
   categoryId: string;
   title: string;
+  description: string;
   price: Prisma.Decimal;
   condition: ProductCondition;
   inventory: number;
@@ -60,9 +76,9 @@ type ProductListRow = {
   createdAt: Date;
   updatedAt: Date;
   images: { url: string }[];
+  seller: SellerSummary;
 };
 
-/** List payloads omit heavy `description` (use GET by id when needed). */
 function mapProductListItem(row: ProductListRow) {
   const mainImageUrl = row.images[0]?.url ?? null;
   return {
@@ -70,6 +86,7 @@ function mapProductListItem(row: ProductListRow) {
     sellerId: row.sellerId,
     categoryId: row.categoryId,
     title: row.title,
+    description: row.description,
     price: row.price.toString(),
     condition: row.condition,
     inventory: row.inventory,
@@ -77,6 +94,82 @@ function mapProductListItem(row: ProductListRow) {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     mainImageUrl,
+    ...mapSellerSummary(row.seller),
+  };
+}
+
+const productImageSelect = {
+  orderBy: [
+    { isMain: Prisma.SortOrder.desc },
+    { sortOrder: Prisma.SortOrder.asc },
+    { createdAt: Prisma.SortOrder.asc },
+  ],
+  take: 1,
+  select: { url: true },
+};
+
+const productCoreSelect = {
+  id: true,
+  sellerId: true,
+  categoryId: true,
+  title: true,
+  description: true,
+  price: true,
+  condition: true,
+  inventory: true,
+  status: true,
+  createdAt: true,
+  updatedAt: true,
+};
+
+const productListSelect = {
+  ...productCoreSelect,
+  images: productImageSelect,
+  seller: { select: { name: true } },
+};
+
+const productDetailSelect = {
+  ...productCoreSelect,
+  seller: { select: { name: true } },
+  images: productImageSelect,
+};
+
+type ProductRatingAggregateRow = {
+  avg_rating: string | null;
+  rating_count: bigint | number | null;
+};
+
+/** Average of non-null `order_items.rating` for the product (0 when none). */
+export async function getProductRating(productId: string) {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    select: { id: true },
+  });
+
+  if (!product) {
+    throw new HttpError(404, "Product not found", "product_not_found");
+  }
+
+  const [row] = await prisma.$queryRaw<ProductRatingAggregateRow[]>`
+    SELECT
+      AVG(rating)::text AS avg_rating,
+      COUNT(rating)::bigint AS rating_count
+    FROM order_items
+    WHERE product_id = ${productId}::uuid
+      AND rating IS NOT NULL
+  `;
+
+  const ratingCount = row?.rating_count != null ? Number(row.rating_count) : 0;
+  const avgRating =
+    row?.avg_rating != null ? Number(row.avg_rating) : Number.NaN;
+
+  return {
+    productId,
+    rating:
+      Number.isFinite(avgRating) && ratingCount > 0
+        ? avgRating.toFixed(2)
+        : "0.00",
+    ratingCount,
   };
 }
 
@@ -143,35 +236,13 @@ export async function listProducts(params: ListProductsParams) {
   const skip = (params.page - 1) * params.pageSize;
   const take = params.pageSize;
 
-  const selectList = {
-    id: true,
-    sellerId: true,
-    categoryId: true,
-    title: true,
-    price: true,
-    condition: true,
-    inventory: true,
-    status: true,
-    createdAt: true,
-    updatedAt: true,
-    images: {
-      orderBy: [
-        { isMain: Prisma.SortOrder.desc },
-        { sortOrder: Prisma.SortOrder.asc },
-        { createdAt: Prisma.SortOrder.asc },
-      ],
-      take: 1,
-      select: { url: true },
-    },
-  };
-
   const [rows, total] = await prisma.$transaction([
     prisma.product.findMany({
       where,
       orderBy,
       skip,
       take,
-      select: selectList,
+      select: productListSelect,
     }),
     prisma.product.count({ where }),
   ]);
@@ -210,42 +281,39 @@ export async function createProduct(input: CreateProductInput) {
     throw new HttpError(404, "Category not found", "category_not_found");
   }
 
-  const product = await prisma.product.create({
-    data: {
-      sellerId: input.sellerId,
-      categoryId: input.categoryId,
-      title: input.title,
-      description: input.description,
-      price: new Prisma.Decimal(input.price),
-      condition: input.condition,
-      inventory: input.inventory,
-      status: input.status,
-    },
-  });
+  const [product, sellerProfile] = await prisma.$transaction([
+    prisma.product.create({
+      data: {
+        sellerId: input.sellerId,
+        categoryId: input.categoryId,
+        title: input.title,
+        description: input.description,
+        price: new Prisma.Decimal(input.price),
+        condition: input.condition,
+        inventory: input.inventory,
+        status: input.status,
+      },
+      select: productCoreSelect,
+    }),
+    prisma.user.findUniqueOrThrow({
+      where: { id: input.sellerId },
+      select: { name: true },
+    }),
+  ]);
 
-  return mapProduct(product, null);
+  return mapProduct(product, null, sellerProfile);
 }
 
 export async function getProductById(id: string) {
   const product = await prisma.product.findUnique({
     where: { id },
-    include: {
-      images: {
-        orderBy: [
-          { isMain: Prisma.SortOrder.desc },
-          { sortOrder: Prisma.SortOrder.asc },
-          { createdAt: Prisma.SortOrder.asc },
-        ],
-        take: 1,
-        select: { url: true },
-      },
-    },
+    select: productDetailSelect,
   });
   if (!product) {
     throw new HttpError(404, "Product not found", "product_not_found");
   }
-  const { images, ...rest } = product;
-  return mapProduct(rest, images[0]?.url ?? null);
+  const { images, seller, ...rest } = product;
+  return mapProduct(rest, images[0]?.url ?? null, seller);
 }
 
 export type UpdateProductInput = {
@@ -314,21 +382,11 @@ export async function updateProduct(input: UpdateProductInput) {
   const product = await prisma.product.update({
     where: { id: input.id },
     data,
-    include: {
-      images: {
-        orderBy: [
-          { isMain: Prisma.SortOrder.desc },
-          { sortOrder: Prisma.SortOrder.asc },
-          { createdAt: Prisma.SortOrder.asc },
-        ],
-        take: 1,
-        select: { url: true },
-      },
-    },
+    select: productDetailSelect,
   });
 
-  const { images, ...rest } = product;
-  return mapProduct(rest, images[0]?.url ?? null);
+  const { images, seller, ...rest } = product;
+  return mapProduct(rest, images[0]?.url ?? null, seller);
 }
 
 /** Soft delete: set `status` to `removed`. Idempotent when already removed. */

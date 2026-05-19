@@ -70,12 +70,10 @@ export default function ShopFilters({ categories }: ShopFiltersProps) {
         alignItems: "center",
         flexWrap: "wrap",
         justifyContent: "flex-end",
-        mb: 3,
+        mb: 1,
         px: 4,
-        pt: 2,
-        pb: 2,
-        backgroundColor: "rgb(212, 212, 212)",
-        borderBottom: "1px solid rgb(220, 226, 240)",
+        pt: 1,
+        pb: 1,
       }}
     >
       <FormControl size="small" sx={{ minWidth: 160 }}>

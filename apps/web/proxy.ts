@@ -1,5 +1,10 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { AUTH_SESSION_COOKIE_NAME } from "./lib/auth-session";
+import {
+  requiredRolesForPath,
+  sessionHasAnyRole,
+  UNAUTHORIZED_PATH,
+} from "./lib/route-access";
 
 const LOGIN_PATH = "/login";
 const REGISTER_PATH = "/register";
@@ -14,6 +19,7 @@ const AUTH_SESSION_PATH = "/api/auth/session";
 const PUBLIC_PREFIXES = [
   LOGIN_PATH,
   REGISTER_PATH,
+  UNAUTHORIZED_PATH,
   AUTH_LOGIN_PROXY_PATH,
   AUTH_LOGOUT_PATH,
   AUTH_SESSION_PATH,
@@ -69,6 +75,14 @@ export function proxy(request: NextRequest) {
       loginUrl.searchParams.set("callbackUrl", returnTo);
     }
     return NextResponse.redirect(loginUrl);
+  }
+
+  const allowedRoles = requiredRolesForPath(pathname);
+  if (allowedRoles) {
+    const token = request.cookies.get(AUTH_SESSION_COOKIE_NAME)?.value ?? "";
+    if (!sessionHasAnyRole(token, allowedRoles)) {
+      return NextResponse.redirect(new URL(UNAUTHORIZED_PATH, request.url));
+    }
   }
 
   return NextResponse.next();

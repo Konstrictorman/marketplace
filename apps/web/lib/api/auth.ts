@@ -38,7 +38,7 @@ export async function logout(): Promise<LogoutResponseData> {
 
 export type AuthSessionData =
   | { authenticated: false }
-  | { authenticated: true; userId: string; initials: string };
+  | { authenticated: true; userId: string; initials: string; roles: string[] };
 
 /**
  * Reads `mp_session` via `GET /api/auth/session` (same-origin, credentials).

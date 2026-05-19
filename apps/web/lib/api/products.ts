@@ -16,6 +16,7 @@ export type ProductListItem = {
   sellerId: string;
   categoryId: string;
   title: string;
+  description: string;
   price: string;
   condition: ProductCondition;
   inventory: number;
@@ -24,11 +25,18 @@ export type ProductListItem = {
   updatedAt: string;
   /** Resolved gallery image: `isMain` first, else lowest `sortOrder`. */
   mainImageUrl: string | null;
+  /** Seller display name (`users.name`). */
+  sellerUserName: string;
 };
 
-export type Product = ProductListItem & {
-  description: string;
+export type ProductRating = {
+  productId: string;
+  /** Average of rated order items (0–5). */
+  rating: string;
+  ratingCount: number;
 };
+
+export type Product = ProductListItem;
 
 export type ProductImage = {
   id: string;
@@ -177,6 +185,13 @@ export async function getProductById(id: string) {
     `/api/products/${id}`,
   );
   return data;
+}
+
+export async function getProductRating(productId: string) {
+  const { data } = await apiClient.get<{ data: ProductRating }>(
+    `/api/products/${productId}/rating`,
+  );
+  return data.data;
 }
 
 export async function updateProduct(id: string, body: UpdateProductBody) {

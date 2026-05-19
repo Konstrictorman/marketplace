@@ -9,6 +9,7 @@ import {
   createProduct,
   deactivateProduct,
   getProductById,
+  getProductRating,
   listProducts,
   updateProduct,
 } from "../services/products.service.js";
@@ -182,6 +183,16 @@ router.post(
     const body = req.body as CreateProductBody;
     const product = await createProduct(body);
     res.status(201).json({ data: product });
+  }),
+);
+
+router.get(
+  "/products/:id/rating",
+  validateParams(productIdParamsSchema),
+  asyncHandler(async (_req, res) => {
+    const { id } = res.locals.validatedParams as ProductIdParams;
+    const rating = await getProductRating(id);
+    res.json({ data: rating });
   }),
 );
 

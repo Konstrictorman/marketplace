@@ -2,11 +2,12 @@ import { Suspense } from "react";
 import { Box, Grid, Typography } from "@mui/material";
 import ProductCard from "@/components/ProductCard/ProductCard";
 import ShopFilters from "@/components/ShopFilters/ShopFilters";
-import { listProducts } from "@/lib/api/products";
+import {
+  listProducts,
+  type ProductCondition,
+  type ProductListItem,
+} from "@/lib/api/products";
 import { listCategories } from "@/lib/api/categories";
-import { mapProductListItemToCardProduct } from "@/lib/map-product-list-item-to-card";
-import type { productType } from "@/types/types";
-import type { ProductCondition } from "@/lib/api/products";
 import Link from "next/link";
 
 export const dynamic = "force-dynamic";
@@ -31,7 +32,7 @@ export default async function Shop({
   const page =
     typeof sp.page === "string" ? Math.max(1, parseInt(sp.page, 10) || 1) : 1;
 
-  let products: productType[] = [];
+  let products: ProductListItem[] = [];
   let totalPages = 1;
   let total = 0;
   let fetchError: string | null = null;
@@ -53,7 +54,7 @@ export default async function Shop({
       }),
       listCategories({ page: 1, pageSize: 100, isActive: true }),
     ]);
-    products = productResult.data.map(mapProductListItemToCardProduct);
+    products = productResult.data;
     totalPages = productResult.meta.totalPages;
     total = productResult.meta.total;
     categories = categoriesResult.data.map(({ id, name }) => ({ id, name }));
