@@ -20,9 +20,9 @@ export default function CategorySalesPieChart({
   return (
     <Box
       sx={{
-        width: "100%",
+        flex: "1 1 360px",
+        minWidth: 280,
         maxWidth: 520,
-        mt: 4,
         p: 3,
         borderRadius: "12px",
         border: "1px solid rgb(224, 228, 240)",
@@ -42,18 +42,33 @@ export default function CategorySalesPieChart({
           delivered.
         </Typography>
       ) : (
-        <PieChart
-          series={[
-            {
-              data: chartData,
-              highlightScope: { fade: "global", highlight: "item" },
-              valueFormatter: (value) => `${value} units`,
-            },
-          ]}
-          width={460}
-          height={320}
-          margin={{ right: 120 }}
-        />
+        <Box
+          sx={{
+            width: "100%",
+            display: "flex",
+            justifyContent: "center",
+            overflow: "hidden",
+          }}
+        >
+          <PieChart
+            series={[
+              {
+                data: chartData,
+                highlightScope: { fade: "global", highlight: "item" },
+                valueFormatter: (value) => `${value} units`,
+              },
+            ]}
+            width={400}
+            height={300}
+            margin={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            slotProps={{
+              legend: {
+                direction: "horizontal",
+                position: { vertical: "bottom", horizontal: "center" },
+              },
+            }}
+          />
+        </Box>
       )}
     </Box>
   );

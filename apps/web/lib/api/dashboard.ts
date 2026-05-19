@@ -12,3 +12,17 @@ export async function getSalesByCategory(): Promise<CategorySalesSlice[]> {
   );
   return data.data;
 }
+
+export type ProductsPublishedPoint = {
+  date: string;
+  count: number;
+};
+
+export async function getProductsPublishedLastMonth(): Promise<
+  ProductsPublishedPoint[]
+> {
+  const { data } = await apiClient.get<{ data: ProductsPublishedPoint[] }>(
+    "/api/dashboard/products-published",
+  );
+  return data.data;
+}

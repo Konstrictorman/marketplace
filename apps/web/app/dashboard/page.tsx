@@ -1,17 +1,35 @@
 import { Alert, Box, Typography } from "@mui/material";
 import CategorySalesPieChart from "@/components/Dashboard/CategorySalesPieChart";
-import { getSalesByCategory } from "@/lib/api/dashboard";
+import ProductsPublishedSparkline from "@/components/Dashboard/ProductsPublishedSparkline";
+import {
+  getProductsPublishedLastMonth,
+  getSalesByCategory,
+} from "@/lib/api/dashboard";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   let slices: Awaited<ReturnType<typeof getSalesByCategory>> = [];
-  let fetchError: string | null = null;
+  let publishedPoints: Awaited<ReturnType<typeof getProductsPublishedLastMonth>> =
+    [];
+  let salesError: string | null = null;
+  let publishedError: string | null = null;
 
-  try {
-    slices = await getSalesByCategory();
-  } catch {
-    fetchError = "Could not load sales by category.";
+  const [salesResult, publishedResult] = await Promise.allSettled([
+    getSalesByCategory(),
+    getProductsPublishedLastMonth(),
+  ]);
+
+  if (salesResult.status === "fulfilled") {
+    slices = salesResult.value;
+  } else {
+    salesError = "Could not load sales by category.";
+  }
+
+  if (publishedResult.status === "fulfilled") {
+    publishedPoints = publishedResult.value;
+  } else {
+    publishedError = "Could not load products published.";
   }
 
   return (
@@ -46,13 +64,39 @@ export default async function DashboardPage() {
           Dashboard
         </Typography>
 
-        {fetchError ? (
-          <Alert severity="error" sx={{ mt: 3, width: "100%", maxWidth: 520 }}>
-            {fetchError}
-          </Alert>
-        ) : (
-          <CategorySalesPieChart slices={slices} />
+        {(salesError || publishedError) && (
+          <Box
+            sx={{
+              mt: 3,
+              width: "100%",
+              display: "flex",
+              flexDirection: "column",
+              gap: 1,
+            }}
+          >
+            {salesError ? <Alert severity="error">{salesError}</Alert> : null}
+            {publishedError ? (
+              <Alert severity="error">{publishedError}</Alert>
+            ) : null}
+          </Box>
         )}
+
+        <Box
+          sx={{
+            mt: 4,
+            width: "100%",
+            display: "flex",
+            flexDirection: { xs: "column", md: "row" },
+            alignItems: { xs: "center", md: "flex-start" },
+            justifyContent: "center",
+            gap: 3,
+          }}
+        >
+          {!salesError ? <CategorySalesPieChart slices={slices} /> : null}
+          {!publishedError ? (
+            <ProductsPublishedSparkline points={publishedPoints} />
+          ) : null}
+        </Box>
       </Box>
     </Box>
   );
