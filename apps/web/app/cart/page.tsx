@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import {
+  Alert,
   Box,
   Typography,
   Button,
@@ -9,6 +10,7 @@ import {
   IconButton,
   Card,
   CardMedia,
+  Snackbar,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
 import AddIcon from "@mui/icons-material/Add";
@@ -21,8 +23,14 @@ import {
   productImageUrl,
 } from "@/lib/product-helpers";
 import { getAuthSession } from "@/lib/api/auth";
-import { isApiError } from "@/lib/api/client";
-import { useNotifications } from "@/context/NotificationContext";
+import { getExpressApiBaseUrl, isApiError } from "@/lib/api/client";
+import { createOrder } from "@/lib/api/orders";
+
+const CHECKOUT_LOG = "[checkout]";
+
+function logCheckout(phase: string, data?: Record<string, unknown>): void {
+  console.log(CHECKOUT_LOG, phase, data ?? "");
+}
 
 export default function CartPage() {
   const {
@@ -36,7 +44,7 @@ export default function CartPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
-  const { addNotification } = useNotifications();
+  const [successToast, setSuccessToast] = useState<string | null>(null);
   const selectedItems = items.filter((item) => item.selected);
   const total = selectedItems.reduce(
     (sum, item) => sum + parseProductPrice(item.product.price) * item.amount,
@@ -50,16 +58,96 @@ export default function CartPage() {
     setIsSubmitting(true);
     setOrderError(null);
 
+    const apiBaseUrl = getExpressApiBaseUrl();
+    const orderPayload = {
+      items: selectedItems.map((item) => ({
+        productId: item.product.id,
+        quantity: item.amount,
+        title: item.product.title,
+      })),
+    };
+
+    logCheckout("start", {
+      pageOrigin: window.location.origin,
+      apiBaseUrl,
+      nextPublicApiUrl:
+        process.env.NEXT_PUBLIC_API_URL ?? "(unset → localhost:3001)",
+      selectedItemCount: selectedItems.length,
+      total: total.toFixed(2),
+      items: orderPayload.items,
+    });
+
     try {
+      logCheckout("auth.session.request");
       const session = await getAuthSession();
+      logCheckout("auth.session.response", {
+        authenticated: session.authenticated,
+        ...(session.authenticated
+          ? { userId: session.userId, roles: session.roles }
+          : {}),
+      });
+
       if (!session.authenticated) {
+        logCheckout("auth.session.rejected", {
+          reason: "not authenticated",
+        });
         setOrderError("You must be logged in to place an order.");
         return;
       }
 
-      addNotification("Tu compra fue realizada exitosamente.", "purchase");
+      const createBody = {
+        buyerId: session.userId,
+        items: orderPayload.items.map(({ productId, quantity }) => ({
+          productId,
+          quantity,
+        })),
+      };
+
+      logCheckout("createOrder.request", {
+        url: `${apiBaseUrl}/api/orders`,
+        body: createBody,
+      });
+
+      const result = await createOrder(createBody);
+
+      logCheckout("createOrder.success", {
+        orderId: result.data.id,
+        status: result.data.status,
+        totalAmount: result.data.totalAmount,
+        itemCount: result.data.items.length,
+      });
+
       selectedItems.forEach((item) => removeFromCart(item.product.id));
+      setSuccessToast("Order placed successfully");
     } catch (e: unknown) {
+      const diagnostics: Record<string, unknown> = {
+        apiBaseUrl,
+        pageOrigin: window.location.origin,
+      };
+
+      if (isApiError(e)) {
+        diagnostics.status = e.status;
+        diagnostics.message = e.message;
+        diagnostics.details = e.details;
+        console.error(CHECKOUT_LOG, "createOrder.failed (API)", diagnostics);
+      } else if (e instanceof Error) {
+        diagnostics.name = e.name;
+        diagnostics.message = e.message;
+        console.error(
+          CHECKOUT_LOG,
+          "createOrder.failed (Error)",
+          diagnostics,
+          e,
+        );
+      } else {
+        diagnostics.raw = e;
+        console.error(
+          CHECKOUT_LOG,
+          "createOrder.failed (unknown)",
+          diagnostics,
+        );
+      }
+
       const message = isApiError(e)
         ? e.message
         : "Could not place order. Please try again.";
@@ -403,6 +491,25 @@ export default function CartPage() {
           </Box>
         </Box>
       )}
+
+      <Snackbar
+        open={Boolean(successToast)}
+        autoHideDuration={3000}
+        onClose={(_, reason) => {
+          if (reason === "clickaway") return;
+          setSuccessToast(null);
+        }}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={() => setSuccessToast(null)}
+          severity="success"
+          variant="filled"
+          sx={{ width: "100%" }}
+        >
+          {successToast}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

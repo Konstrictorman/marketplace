@@ -292,7 +292,21 @@ router.post(
   validateBody(createOrderBodySchema),
   asyncHandler(async (req, res) => {
     const body = req.body as CreateOrderBody;
+    console.log("[createOrder] request", {
+      buyerId: body.buyerId,
+      itemCount: body.items.length,
+      productIds: body.items.map((item) => item.productId),
+      origin: req.headers.origin ?? "(no Origin header)",
+      userAgent: req.headers["user-agent"],
+    });
     const result = await createOrder(body);
+    console.log("[createOrder] success", {
+      orderId: result.data.id,
+      buyerId: result.data.buyerId,
+      status: result.data.status,
+      totalAmount: result.data.totalAmount,
+      itemCount: result.data.items.length,
+    });
     res.status(201).json(result);
   }),
 );
