@@ -1,7 +1,7 @@
 import type { ProductCondition, ProductStatus } from "@/lib/api/products";
 
 export const PRODUCT_PLACEHOLDER_IMAGE =
-  "https://placehold.co/400x300?text=No+image";
+  "https://placehold.co/400x300?text=No+Image";
 
 export function productImageUrl(mainImageUrl: string | null): string {
   return mainImageUrl ?? PRODUCT_PLACEHOLDER_IMAGE;

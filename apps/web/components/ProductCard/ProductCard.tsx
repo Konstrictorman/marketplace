@@ -5,20 +5,19 @@ import {
   Card,
   CardContent,
   CardActions,
-  CardMedia,
   Typography,
   Button,
   Rating,
   Box,
 } from "@mui/material";
 import ProductDetailModal from "@/components/ProductDetailModal/ProductDetailModal";
+import ProductCardImage from "@/components/ProductCard/ProductCardImage";
 import type { ProductListItem } from "@/lib/api/products";
 import { useProductRating } from "@/hooks/useProductRating";
 import {
   formatProductRating,
   parseProductPrice,
   parseProductRating,
-  productImageUrl,
 } from "@/lib/product-helpers";
 
 type ProductCardProps = {
@@ -68,12 +67,9 @@ const ProductCard = ({
           }),
         }}
       >
-        <CardMedia
-          component="img"
-          height="180"
-          image={productImageUrl(product.mainImageUrl)}
+        <ProductCardImage
+          mainImageUrl={product.mainImageUrl}
           alt={product.title}
-          sx={{ objectFit: "cover" }}
         />
 
         <CardContent sx={{ padding: "16px" }}>
