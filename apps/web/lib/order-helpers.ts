@@ -31,5 +31,10 @@ export async function setOrderItemProductRating(
     rating: clampOrderItemRating(input.rating),
     ...(input.buyerId !== undefined ? { buyerId: input.buyerId } : {}),
   };
-  return patchOrderItemRating(input.orderId, input.itemId, body);
+  const { data: item } = await patchOrderItemRating(
+    input.orderId,
+    input.itemId,
+    body,
+  );
+  return item;
 }
