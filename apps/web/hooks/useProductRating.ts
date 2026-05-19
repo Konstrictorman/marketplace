@@ -9,14 +9,17 @@ export function useProductRating(productId: string, enabled = true) {
   const [rating, setRating] = useState(DEFAULT_RATING);
   const [loading, setLoading] = useState(enabled);
 
+  const [prevKey, setPrevKey] = useState({ productId, enabled });
+  if (productId !== prevKey.productId || enabled !== prevKey.enabled) {
+    setPrevKey({ productId, enabled });
+    setRating(DEFAULT_RATING);
+    setLoading(enabled);
+  }
+
   useEffect(() => {
-    if (!enabled) {
-      setLoading(false);
-      return;
-    }
+    if (!enabled) return;
 
     let cancelled = false;
-    setLoading(true);
 
     getProductRating(productId)
       .then((result) => {

@@ -21,6 +21,10 @@ const imageSx = {
   objectFit: "cover" as const,
 };
 
+function initialStatus(url: string | null): ImageStatus {
+  return url ? "loading" : "empty";
+}
+
 /** Placeholder underneath; main image fades in after a successful load. */
 export default function ProductCardImage({
   mainImageUrl,
@@ -29,30 +33,38 @@ export default function ProductCardImage({
   sx,
 }: ProductCardImageProps) {
   const url = mainImageUrl?.trim() || null;
-  const [status, setStatus] = useState<ImageStatus>(url ? "loading" : "empty");
+  const [status, setStatus] = useState<ImageStatus>(() => initialStatus(url));
+
+  const [prevUrl, setPrevUrl] = useState(url);
+  if (url !== prevUrl) {
+    setPrevUrl(url);
+    setStatus(initialStatus(url));
+  }
 
   useEffect(() => {
-    if (!url) {
-      setStatus("empty");
-      return;
-    }
+    if (!url) return;
 
-    setStatus("loading");
     const img = new window.Image();
+    let cancelled = false;
 
-    const handleLoad = () => setStatus("loaded");
-    const handleError = () => setStatus("error");
+    const finish = (next: "loaded" | "error") => {
+      if (!cancelled) setStatus(next);
+    };
 
-    img.onload = handleLoad;
-    img.onerror = handleError;
+    img.onload = () => finish("loaded");
+    img.onerror = () => finish("error");
     img.src = url;
 
     if (img.complete) {
-      if (img.naturalWidth > 0) handleLoad();
-      else handleError();
+      queueMicrotask(() => {
+        if (cancelled) return;
+        if (img.naturalWidth > 0) finish("loaded");
+        else finish("error");
+      });
     }
 
     return () => {
+      cancelled = true;
       img.onload = null;
       img.onerror = null;
     };

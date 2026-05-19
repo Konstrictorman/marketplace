@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   PRODUCT_PLACEHOLDER_IMAGE,
   productImageUrl,
@@ -8,16 +8,19 @@ import {
 
 /** Resolves product image URL; falls back to placeholder on load error or missing URL. */
 export function useProductImageSrc(mainImageUrl: string | null) {
-  const [src, setSrc] = useState(() => productImageUrl(mainImageUrl));
+  const resolvedUrl = productImageUrl(mainImageUrl);
+  const [loadFailed, setLoadFailed] = useState(false);
 
-  useEffect(() => {
-    setSrc(productImageUrl(mainImageUrl));
-  }, [mainImageUrl]);
+  const [prevMainImageUrl, setPrevMainImageUrl] = useState(mainImageUrl);
+  if (mainImageUrl !== prevMainImageUrl) {
+    setPrevMainImageUrl(mainImageUrl);
+    setLoadFailed(false);
+  }
+
+  const src = loadFailed ? PRODUCT_PLACEHOLDER_IMAGE : resolvedUrl;
 
   const onError = useCallback(() => {
-    setSrc((current) =>
-      current === PRODUCT_PLACEHOLDER_IMAGE ? current : PRODUCT_PLACEHOLDER_IMAGE,
-    );
+    setLoadFailed(true);
   }, []);
 
   return { src, onError };
