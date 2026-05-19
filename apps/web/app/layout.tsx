@@ -4,6 +4,7 @@ import Image from "next/image";
 import "./globals.css";
 import NavBar from "@/components/NavBar/NavBar";
 import { CartProvider } from "@/context/CartContext";
+import { NotificationsProvider } from "@/context/NotificationContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -52,15 +53,17 @@ export default function RootLayout({
         </header>
 
         <CartProvider>
-          <NavBar />
-          <main
-            className="flex-1 flex flex-col"
-            style={{
-              backgroundColor: "rgb(239, 241, 244)",
-            }}
-          >
-            {children}
-          </main>
+          <NotificationsProvider>
+            <NavBar />
+            <main
+              className="flex-1 flex flex-col"
+              style={{
+                backgroundColor: "rgb(239, 241, 244)",
+              }}
+            >
+              {children}
+            </main>
+          </NotificationsProvider>
         </CartProvider>
 
         {/* Footer */}

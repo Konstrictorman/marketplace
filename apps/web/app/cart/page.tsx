@@ -17,6 +17,7 @@ import Link from "next/link";
 import { useCart } from "@/context/CartContext";
 import { getAuthSession } from "@/lib/api/auth";
 import { isApiError } from "@/lib/api/client";
+import { useNotifications } from "@/context/NotificationContext";
 
 export default function CartPage() {
   const {
@@ -30,7 +31,7 @@ export default function CartPage() {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
-
+  const { addNotification } = useNotifications();
   const selectedItems = items.filter((item) => item.selected);
   const total = selectedItems.reduce(
     (sum, item) => sum + item.product.price * item.amount,
@@ -50,6 +51,8 @@ export default function CartPage() {
         setOrderError("You must be logged in to place an order.");
         return;
       }
+
+      addNotification("Tu compra fue realizada exitosamente.", "purchase");
       selectedItems.forEach((item) => removeFromCart(item.product.id));
     } catch (e: unknown) {
       const message = isApiError(e)

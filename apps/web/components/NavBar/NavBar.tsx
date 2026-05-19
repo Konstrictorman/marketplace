@@ -4,7 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { Avatar, Button, Skeleton } from "@mui/material";
 import ShoppingCart from "../ShoppingCart/ShoppingCart";
 import { getAuthSession, logout, type AuthSessionData } from "@/lib/api/auth";
-import NotificationsButton from "../NotificationsButton/NotificationsButton";
+import NotificationsButton from "../NotificationButton/NotificationButton";
 import SearchBar from "../SearchBar/SearchBar";
 import ChatButton from "../ChatButton/ChatButton";
 import ChatDrawer from "../ChatDrawer/ChatDrawer";
@@ -16,6 +16,7 @@ export default function NavBar() {
   const [chatOpen, setChatOpen] = useState(false);
   const islogin = pathname === "/login";
   const isshop = pathname === "/shop";
+  const isregister = pathname === "/register";
 
   useEffect(() => {
     let cancelled = false;
@@ -70,16 +71,18 @@ export default function NavBar() {
         >
           Home
         </Button>
-        <Button
-          href="/orders"
-          style={{
-            color: "rgb(254, 254, 254)",
-            textDecoration: "none",
-            fontWeight: "500",
-          }}
-        >
-          Mis Pedidos
-        </Button>
+        {session?.authenticated && !islogin && !isregister && (
+          <Button
+            href="/orders"
+            style={{
+              color: "rgb(254, 254, 254)",
+              textDecoration: "none",
+              fontWeight: "500",
+            }}
+          >
+            Mis Pedidos
+          </Button>
+        )}
         <Suspense
           fallback={
             <Skeleton
@@ -101,8 +104,10 @@ export default function NavBar() {
 
         {/* Right side */}
         {isshop && <ShoppingCart />}
-        {!islogin && <NotificationsButton />}
-        {!islogin && <ChatButton onClick={() => setChatOpen(true)} />}
+        {!islogin && !isregister && <NotificationsButton />}
+        {!islogin && !isregister && (
+          <ChatButton onClick={() => setChatOpen(true)} />
+        )}
         {session?.authenticated && (
           <Avatar
             aria-label={
@@ -122,23 +127,25 @@ export default function NavBar() {
             {session?.authenticated ? session.initials : "?"}
           </Avatar>
         )}
-        <button
-          type="button"
-          onClick={() => void handleLogout()}
-          style={{
-            background: "none",
-            border: "none",
-            padding: 0,
-            cursor: "pointer",
-            color: "rgb(189, 197, 217)",
-            textDecoration: "none",
-            fontWeight: "500",
-            fontSize: "0.9rem",
-            fontFamily: "inherit",
-          }}
-        >
-          Log out
-        </button>
+        {session?.authenticated && !islogin && !isregister && (
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            style={{
+              background: "none",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              color: "rgb(189, 197, 217)",
+              textDecoration: "none",
+              fontWeight: "500",
+              fontSize: "0.9rem",
+              fontFamily: "inherit",
+            }}
+          >
+            Log out
+          </button>
+        )}
       </nav>
 
       <ChatDrawer open={chatOpen} onClose={() => setChatOpen(false)} />

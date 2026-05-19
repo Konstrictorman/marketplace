@@ -16,11 +16,7 @@ export function mapProductListItemToCardProduct(
     id: p.id,
     name: p.title,
     price: Number.isFinite(priceNum) ? priceNum : 0,
-    description: [
-      `${p.condition} · ${p.inventory} in stock`,
-      `Status: ${p.status}`,
-      `Product ID: ${p.id}`,
-    ].join("\n"),
+    description: "",
     stock: p.inventory,
     rating: 0,
     condition,
