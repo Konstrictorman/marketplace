@@ -8,7 +8,7 @@ export const openApiDocument = {
     title: "Marketplace API",
     version: "1.0.0",
     description:
-      "Express REST API (`apps/api`). **Swagger UI:** open `GET /docs` under the API base (e.g. `http://localhost:3001/api/docs`). **Raw spec:** `GET /docs/openapi.json`. JSON errors use `ApiErrorEnvelope` (`error.code`, `error.message`, optional `error.details`). **operationId** is stable for generated clients. Covers health, **categories**, products & images, uploads (**`POST /uploads`** plus **`GET`/`HEAD` `/uploads/{filename}`** for stored files), conversations, participants, **messages** (list/create/get/patch/delete), orders, **roles**, **users**, **user_roles** (nested under `/users/{userId}/roles`), and **auth/login** (JWT issuance). **Browser HttpOnly sessions** are handled by the Next.js app (`apps/web`): it proxies `POST /auth/login` to this API, stores the JWT in cookie `mp_session`, and clears it via **`POST` or `GET` `/api/auth/logout` on the web origin** (not an Express route).",
+      "Express REST API (`apps/api`). **Swagger UI:** open `GET /docs` under the API base (e.g. `http://localhost:3001/api/docs`). **Raw spec:** `GET /docs/openapi.json`. JSON errors use `ApiErrorEnvelope` (`error.code`, `error.message`, optional `error.details`). **operationId** is stable for generated clients. Covers health, **categories**, products & images (catalog rows do **not** store a rating column), **`GET /products/{id}/rating`** (average of `order_items.rating`), uploads, conversations, **messages**, orders & line items (**`PATCH /orders/{orderId}/items/{itemId}/rating`** to rate after purchase), **roles**, **users**, **user_roles**, and **`POST /auth/login`** (Bearer JWT for API clients such as Postman). **Browser sessions:** the Next.js app (`apps/web`) proxies login to this API and stores the JWT in HttpOnly cookie `mp_session`; logout is **`POST` or `GET` `/api/auth/logout` on the web origin** (not an Express route).",
   },
   servers: [
     {
@@ -27,12 +27,12 @@ export const openApiDocument = {
     {
       name: "Authentication",
       description:
-        "`POST /auth/login` issues an HS256 JWT (`data.token`, `data.expiresIn`). Claims include `sub`/`userId`, `username`, `institutionalEmail`, `roles`, `role`. **`GET /auth/login`** returns `405` with `Allow: POST` (avoids `route_not_found` for probes). **Next.js BFF** (`apps/web`): same credentials to the web app’s `POST /api/auth/login` set HttpOnly `mp_session`; end session with **`POST` or `GET`** `/api/auth/logout` on the **web** host (cookie clear + optional redirect to `/login`).",
+        "**API clients (Postman, curl):** `POST /auth/login` on this host (e.g. `http://localhost:3001/api/auth/login`) returns `data.token` (Bearer JWT) and `data.expiresIn`. Use header `Authorization: Bearer <token>`. Claims: `sub`/`userId`, `username`, `institutionalEmail`, `roles`, `role`. **`GET /auth/login`** → `405` + `Allow: POST`. **Browser (Next.js):** `POST /api/auth/login` on the web app (`:3000`) sets HttpOnly `mp_session` and returns `{ data: { ok: true } }` only — not suitable for copying a Bearer token.",
     },
     {
       name: "Products",
       description:
-        "Product catalog CRUD & search. Each product’s `categoryId` must reference an existing category (see **Categories**).",
+        "Product catalog CRUD & search. Each product’s `categoryId` must reference an existing category (see **Categories**). **Ratings:** buyers rate purchased lines on `order_items` (`PATCH` under **Orders**); the public score is computed — **`GET /products/{id}/rating`** — not stored on `products`. List/detail rows include `sellerUserName` (seller display name).",
     },
     {
       name: "Categories",
@@ -62,7 +62,7 @@ export const openApiDocument = {
     {
       name: "Orders",
       description:
-        "Orders and line items. **Interim identity:** `buyerId` is optional on all order and order-item routes (query or JSON body). When provided it must match the order’s buyer (`403` otherwise). Replace with JWT/session auth when available.",
+        "Orders and line items. **Line quantity** (`PATCH /orders/{orderId}/items/{itemId}`) applies only while the order is `pending`. **Product rating** (`PATCH /orders/{orderId}/items/{itemId}/rating`) sets `order_items.rating` (0–5) when the order is `confirmed` or `delivered`; averages feed **`GET /products/{id}/rating`**. **Interim identity:** optional `buyerId` on routes (query or JSON); when provided it must match the order buyer (`403`).",
     },
     {
       name: "Roles",
@@ -457,7 +457,8 @@ export const openApiDocument = {
         ],
         responses: {
           "200": {
-            description: "Paged list (`description` omitted on each row)",
+            description:
+              "Paged list. Each row includes `description`, `mainImageUrl`, and `sellerUserName`. Use **`GET /products/{id}/rating`** for the computed score (not embedded here).",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ProductListResponse" },
@@ -514,6 +515,43 @@ export const openApiDocument = {
         },
       },
     },
+    "/products/{id}/rating": {
+      parameters: [
+        {
+          name: "id",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      get: {
+        operationId: "getProductRating",
+        tags: ["Products"],
+        summary: "Get computed product rating",
+        description:
+          "Read-only aggregate: `AVG(order_items.rating)` where `rating IS NOT NULL` for this `productId`. Returns `rating: \"0.00\"` and `ratingCount: 0` when no rated purchases exist. Does not read a column on `products`.",
+        responses: {
+          "200": {
+            description: "Computed average and count of rated line items",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ProductRatingResponse",
+                },
+              },
+            },
+          },
+          "404": {
+            description: "Product not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
     "/products/{id}": {
       parameters: [
         {
@@ -527,9 +565,11 @@ export const openApiDocument = {
         operationId: "getProduct",
         tags: ["Products"],
         summary: "Get product by id",
+        description:
+          "Full catalog row including `description` and `sellerUserName`. For the buyer-average score, call **`GET /products/{id}/rating`**.",
         responses: {
           "200": {
-            description: "Product with description",
+            description: "Product detail (rating not embedded; see `/products/{id}/rating`)",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ProductDetailResponse" },
@@ -2006,6 +2046,83 @@ export const openApiDocument = {
         },
       },
     },
+    "/orders/{orderId}/items/{itemId}/rating": {
+      parameters: [
+        {
+          name: "orderId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+        {
+          name: "itemId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      patch: {
+        operationId: "patchOrderItemRating",
+        tags: ["Orders"],
+        summary: "Rate a purchased line item",
+        description:
+          "Sets or updates the buyer’s product rating (0–5) on an order line. Allowed when the parent order is `confirmed` or `delivered`. Optional body `buyerId`; when set must match the order buyer. Feeds the computed product rating (`GET /products/{id}/rating`).",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/OrderItemRatingPatchBody",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Updated line item with rating",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/OrderItemResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "403": {
+            description:
+              "`forbidden` when JSON body property `buyerId` is provided but does not match the order buyer",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "404": {
+            description: "`order_not_found` or `order_item_not_found`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+          "409": {
+            description:
+              "`order_not_rateable` when the order is `pending` or `cancelled`",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ApiErrorEnvelope" },
+              },
+            },
+          },
+        },
+      },
+    },
     "/orders/{orderId}/items/{itemId}": {
       parameters: [
         {
@@ -2077,7 +2194,7 @@ export const openApiDocument = {
         tags: ["Orders"],
         summary: "Patch line quantity",
         description:
-          "Pending orders only; `unitPrice` snapshot is unchanged. Optional body `buyerId`; when set must match the order buyer.",
+          "Pending orders only; updates `quantity` and recomputes `subtotal` / order total. `unitPrice` snapshot is unchanged. **Not for product ratings** — use **`PATCH .../items/{itemId}/rating`**. Optional body `buyerId`; when set must match the order buyer.",
         requestBody: {
           required: true,
           content: {
@@ -2969,7 +3086,7 @@ export const openApiDocument = {
               code: {
                 type: "string",
                 description:
-                  "Stable machine code. Examples: `validation_failed`, `not_found`, `route_not_found`, `method_not_allowed`, `forbidden`, `invalid_credentials`, `user_inactive`, `auth_misconfigured`, `buyer_not_found`, `seller_not_found`, `category_not_found`, `product_not_found`, `product_removed`, `product_not_available`, `image_not_found`, `order_not_found`, `order_item_not_found`, `order_not_pending`, `insufficient_inventory`, `invalid_order_transition`, `cancelled_only_from_pending`, `conversation_not_found`, `participant_not_found`, `invalid_participants`, `min_participants_required`, `role_not_found`, `role_name_conflict`, `user_not_found`, `user_email_conflict`, `user_in_use`, `user_role_exists`, `user_role_not_found`, `database_unreachable`, … Prisma: `P2002`, `P2003`, `P2015`, `P2025` when surfaced. `database_unavailable`, `internal_error`.",
+                  "Stable machine code. Examples: `validation_failed`, `not_found`, `route_not_found`, `method_not_allowed`, `forbidden`, `invalid_credentials`, `user_inactive`, `auth_misconfigured`, `buyer_not_found`, `seller_not_found`, `category_not_found`, `product_not_found`, `product_removed`, `product_not_available`, `image_not_found`, `order_not_found`, `order_item_not_found`, `order_not_pending`, `order_not_rateable`, `insufficient_inventory`, `invalid_order_transition`, `cancelled_only_from_pending`, `conversation_not_found`, `participant_not_found`, `invalid_participants`, `min_participants_required`, `role_not_found`, `role_name_conflict`, `user_not_found`, `user_email_conflict`, `user_in_use`, `user_role_exists`, `user_role_not_found`, `database_unreachable`, … Prisma: `P2002`, `P2003`, `P2015`, `P2025` when surfaced. `database_unavailable`, `internal_error`.",
                 example: "validation_failed",
               },
               message: {
@@ -3253,7 +3370,7 @@ export const openApiDocument = {
       OrderItem: {
         type: "object",
         description:
-          "One catalog line on an order. The database enforces at most one row per (`orderId`,`productId`); adding the same product again merges quantity on that row (see `POST /orders/{orderId}/items`).",
+          "One catalog line on an order. The database enforces at most one row per (`orderId`,`productId`); adding the same product again merges quantity on that row (see `POST /orders/{orderId}/items`). `rating` is stored on `order_items` (nullable until `PATCH .../rating`).",
         required: [
           "id",
           "orderId",
@@ -3262,6 +3379,7 @@ export const openApiDocument = {
           "quantity",
           "unitPrice",
           "subtotal",
+          "rating",
           "createdAt",
         ],
         properties: {
@@ -3272,7 +3390,28 @@ export const openApiDocument = {
           quantity: { type: "integer", minimum: 1 },
           unitPrice: { type: "string", description: "Decimal string snapshot" },
           subtotal: { type: "string", description: "Decimal string" },
+          rating: {
+            type: "string",
+            nullable: true,
+            description:
+              "Buyer product rating 0–5; `null` until set via `PATCH .../rating`.",
+          },
           createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      OrderItemRatingPatchBody: {
+        type: "object",
+        description:
+          "`rating` is required (0–5, up to 2 decimals). Optional `buyerId`; when provided it must match the parent order’s buyer. Order must be `confirmed` or `delivered`.",
+        required: ["rating"],
+        properties: {
+          buyerId: { type: "string", format: "uuid" },
+          rating: {
+            type: "number",
+            minimum: 0,
+            maximum: 5,
+            description: "Product rating after purchase, e.g. 4.5",
+          },
         },
       },
       OrderSummary: {
@@ -3406,7 +3545,7 @@ export const openApiDocument = {
       OrderItemPatchBody: {
         type: "object",
         description:
-          "`quantity` is required (≥ 1). Optional `buyerId`; when provided it must match the parent order’s buyer.",
+          "`quantity` is required (≥ 1); parent order must be `pending`. Optional `buyerId`. To rate a purchased product use **`OrderItemRatingPatchBody`** on `PATCH .../items/{itemId}/rating`.",
         required: ["quantity"],
         properties: {
           buyerId: { type: "string", format: "uuid" },
@@ -3432,12 +3571,13 @@ export const openApiDocument = {
       ProductSummary: {
         type: "object",
         description:
-          "List row (no `description`). `mainImageUrl` is the primary gallery image (`isMain` preferred, else first by `sortOrder`).",
+          "Product list row returned by `GET /products`. `mainImageUrl` is the primary gallery image (`isMain` preferred, else first by `sortOrder`). Average rating: **`GET /products/{id}/rating`**.",
         required: [
           "id",
           "sellerId",
           "categoryId",
           "title",
+          "description",
           "price",
           "condition",
           "inventory",
@@ -3445,12 +3585,14 @@ export const openApiDocument = {
           "createdAt",
           "updatedAt",
           "mainImageUrl",
+          "sellerUserName",
         ],
         properties: {
           id: { type: "string", format: "uuid" },
           sellerId: { type: "string", format: "uuid" },
           categoryId: { type: "string", format: "uuid" },
           title: { type: "string" },
+          description: { type: "string" },
           price: {
             type: "string",
             description: 'Decimal string, e.g. "12.99"',
@@ -3467,11 +3609,16 @@ export const openApiDocument = {
             description:
               "Public image URL when the product has images; otherwise `null`.",
           },
+          sellerUserName: {
+            type: "string",
+            description: "Seller display name (`users.name`).",
+          },
         },
       },
       ProductDetail: {
         type: "object",
-        description: "Full product",
+        description:
+          "Full product (`GET /products/{id}`). Average rating is not embedded; use **`GET /products/{id}/rating`**.",
         required: [
           "id",
           "sellerId",
@@ -3485,6 +3632,7 @@ export const openApiDocument = {
           "createdAt",
           "updatedAt",
           "mainImageUrl",
+          "sellerUserName",
         ],
         properties: {
           id: { type: "string", format: "uuid" },
@@ -3505,6 +3653,33 @@ export const openApiDocument = {
             description:
               "Primary list image (`isMain` preferred, else first by `sortOrder`).",
           },
+          sellerUserName: {
+            type: "string",
+            description: "Seller display name (`users.name`).",
+          },
+        },
+      },
+      ProductRating: {
+        type: "object",
+        required: ["productId", "rating", "ratingCount"],
+        properties: {
+          productId: { type: "string", format: "uuid" },
+          rating: {
+            type: "string",
+            description:
+              "Average of rated order items (0–5), e.g. \"4.25\". \"0.00\" when none.",
+          },
+          ratingCount: {
+            type: "integer",
+            description: "Number of order items with a non-null rating",
+          },
+        },
+      },
+      ProductRatingResponse: {
+        type: "object",
+        required: ["data"],
+        properties: {
+          data: { $ref: "#/components/schemas/ProductRating" },
         },
       },
       ProductListResponse: {
@@ -3804,6 +3979,15 @@ export const openApiDocument = {
         properties: {
           userId: { type: "string", format: "uuid" },
         },
+      },
+    },
+    securitySchemes: {
+      bearerAuth: {
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+        description:
+          "Obtain with `POST /auth/login` on this API (`data.token`). Example: `Authorization: Bearer eyJhbG…`. The Next.js login at port 3000 does not expose the token in JSON.",
       },
     },
   },

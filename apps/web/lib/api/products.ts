@@ -27,8 +27,13 @@ export type ProductListItem = {
   mainImageUrl: string | null;
   /** Seller display name (`users.name`). */
   sellerUserName: string;
-  /** Seller reputation stored 0–10 as decimal string; UI shows /5. */
-  sellerReputation: string;
+};
+
+export type ProductRating = {
+  productId: string;
+  /** Average of rated order items (0–5). */
+  rating: string;
+  ratingCount: number;
 };
 
 export type Product = ProductListItem;
@@ -178,6 +183,13 @@ export async function uploadProductImage(
 export async function getProductById(id: string) {
   const { data } = await apiClient.get<{ data: Product }>(
     `/api/products/${id}`,
+  );
+  return data;
+}
+
+export async function getProductRating(productId: string) {
+  const { data } = await apiClient.get<{ data: ProductRating }>(
+    `/api/products/${productId}/rating`,
   );
   return data;
 }

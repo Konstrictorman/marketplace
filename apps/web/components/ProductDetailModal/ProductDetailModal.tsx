@@ -26,13 +26,14 @@ import { updateProduct } from "@/lib/api/products";
 import { isApiError } from "@/lib/api/client";
 import { useCart } from "@/context/CartContext";
 import ChatButton from "../ChatButton/ChatButton";
+import { useProductRating } from "@/hooks/useProductRating";
 import {
   conditionLabel,
-  formatSellerReputationOutOf5,
+  formatProductRating,
   parseProductPrice,
+  parseProductRating,
   productStatusChipColor,
   productStatusLabel,
-  sellerReputationOutOf5,
   productImageUrl,
 } from "@/lib/product-helpers";
 
@@ -63,6 +64,7 @@ const ProductDetailModal = ({
   const [successToast, setSuccessToast] = useState<string | null>(null);
 
   const displayProduct = localProduct ?? product;
+  const { rating: ratingValue } = useProductRating(displayProduct.id, open);
 
   const handleClose = () => {
     setLocalProduct(null);
@@ -73,9 +75,7 @@ const ProductDetailModal = ({
 
   const inStock = displayProduct.inventory > 0;
   const price = parseProductPrice(displayProduct.price);
-  const sellerReputation = sellerReputationOutOf5(
-    displayProduct.sellerReputation,
-  );
+  const productRating = parseProductRating(ratingValue);
   const statusActionLabel =
     displayProduct.status === "active" ? "Inactivate" : "Activate";
   const nextStatus: ProductStatus =
@@ -257,42 +257,54 @@ const ProductDetailModal = ({
               mb: 3,
               flexWrap: "nowrap",
               overflow: "hidden",
+              justifyContent: "space-between",
             }}
           >
-            <Typography
-              variant="body2"
-              component="span"
+            <Box>
+              <Typography
+                variant="body2"
+                component="span"
+                sx={{
+                  fontWeight: "bold",
+                  color: "rgb(0, 28, 100)",
+                  flexShrink: 0,
+                }}
+              >
+                Sold By:
+              </Typography>
+              <Typography
+                variant="body2"
+                component="span"
+                noWrap
+                sx={{ color: "rgb(76, 98, 153)", flexShrink: 1, minWidth: 0 }}
+              >
+                {displayProduct.sellerUserName}
+              </Typography>
+            </Box>
+            <Box
               sx={{
-                fontWeight: "bold",
-                color: "rgb(0, 28, 100)",
-                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                flexWrap: "nowrap",
+                overflow: "hidden",
               }}
             >
-              Sold By:
-            </Typography>
-            <Typography
-              variant="body2"
-              component="span"
-              noWrap
-              sx={{ color: "rgb(76, 98, 153)", flexShrink: 1, minWidth: 0 }}
-            >
-              {displayProduct.sellerUserName}
-            </Typography>
-            <Rating
-              value={sellerReputation}
-              precision={0.5}
-              readOnly
-              size="small"
-              sx={{ flexShrink: 0 }}
-            />
-            <Typography
-              variant="body2"
-              component="span"
-              sx={{ color: "rgb(131, 148, 189)", flexShrink: 0 }}
-            >
-              ({formatSellerReputationOutOf5(displayProduct.sellerReputation)}
-              /5)
-            </Typography>
+              <Rating
+                value={productRating}
+                precision={0.5}
+                readOnly
+                size="small"
+                sx={{ flexShrink: 0 }}
+              />
+              <Typography
+                variant="body2"
+                component="span"
+                sx={{ color: "rgb(131, 148, 189)", flexShrink: 0 }}
+              >
+                ({formatProductRating(ratingValue)}/5)
+              </Typography>
+            </Box>
           </Box>
 
           <Box
