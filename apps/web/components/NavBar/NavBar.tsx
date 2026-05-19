@@ -2,7 +2,8 @@
 import { useEffect, useState, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import HomeIcon from "@mui/icons-material/Home";
-import { Avatar, Button, IconButton, Skeleton } from "@mui/material";
+import ShoppingBasketIcon from "@mui/icons-material/ShoppingBasket";
+import { Avatar, IconButton, Skeleton } from "@mui/material";
 import Link from "next/link";
 import ShoppingCart from "../ShoppingCart/ShoppingCart";
 import { getAuthSession, logout, type AuthSessionData } from "@/lib/api/auth";
@@ -74,16 +75,14 @@ export default function NavBar() {
           <HomeIcon />
         </IconButton>
         {session?.authenticated && !islogin && !isregister && (
-          <Button
+          <IconButton
+            component={Link}
             href="/orders"
-            style={{
-              color: "rgb(254, 254, 254)",
-              textDecoration: "none",
-              fontWeight: "500",
-            }}
+            aria-label="My orders"
+            sx={{ color: "rgb(254, 254, 254)" }}
           >
-            My Orders
-          </Button>
+            <ShoppingBasketIcon />
+          </IconButton>
         )}
         <Suspense
           fallback={
