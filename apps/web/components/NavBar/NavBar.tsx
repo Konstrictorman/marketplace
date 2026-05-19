@@ -3,10 +3,12 @@ import { useEffect, useState, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import HomeIcon from "@mui/icons-material/Home";
 import ShoppingBasketIcon from "@mui/icons-material/ShoppingBasket";
+import PollIcon from "@mui/icons-material/Poll";
 import { Avatar, IconButton, Skeleton } from "@mui/material";
 import Link from "next/link";
 import ShoppingCart from "../ShoppingCart/ShoppingCart";
 import { getAuthSession, logout, type AuthSessionData } from "@/lib/api/auth";
+import { hasAdminRole } from "@/lib/route-access";
 import NotificationsButton from "../NotificationButton/NotificationButton";
 import SearchBar from "../SearchBar/SearchBar";
 import ChatButton from "../ChatButton/ChatButton";
@@ -27,6 +29,8 @@ export default function NavBar() {
   const isregister = pathname === "/register";
   const ismanage = pathname === "/manage";
   const showProductSearch = isshop || ismanage;
+  const showDashboard =
+    session?.authenticated === true && hasAdminRole(session.roles);
 
   const unreadMessageCount = notifications.filter(
     (n) => n.type === "message",
@@ -98,6 +102,16 @@ export default function NavBar() {
         >
           <HomeIcon />
         </IconButton>
+        {showDashboard && (
+          <IconButton
+            component={Link}
+            href="/dashboard"
+            aria-label="Dashboard"
+            sx={{ color: "rgb(254, 254, 254)" }}
+          >
+            <PollIcon />
+          </IconButton>
+        )}
         {session?.authenticated && !islogin && !isregister && (
           <IconButton
             component={Link}
