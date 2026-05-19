@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Box } from "@mui/material";
+import { Box, type SxProps, type Theme } from "@mui/material";
 import { PRODUCT_PLACEHOLDER_IMAGE } from "@/lib/product-helpers";
 
 type ProductCardImageProps = {
   mainImageUrl: string | null;
   alt: string;
+  height?: number | string;
+  sx?: SxProps<Theme>;
 };
 
 type ImageStatus = "empty" | "loading" | "loaded" | "error";
@@ -23,6 +25,8 @@ const imageSx = {
 export default function ProductCardImage({
   mainImageUrl,
   alt,
+  height = 180,
+  sx,
 }: ProductCardImageProps) {
   const url = mainImageUrl?.trim() || null;
   const [status, setStatus] = useState<ImageStatus>(url ? "loading" : "empty");
@@ -60,9 +64,10 @@ export default function ProductCardImage({
     <Box
       sx={{
         position: "relative",
-        height: 180,
+        height,
         overflow: "hidden",
         bgcolor: "rgb(240, 242, 247)",
+        ...sx,
       }}
     >
       <Box

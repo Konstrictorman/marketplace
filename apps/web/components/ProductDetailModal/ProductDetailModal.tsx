@@ -26,6 +26,7 @@ import { updateProduct } from "@/lib/api/products";
 import { isApiError } from "@/lib/api/client";
 import { useCart } from "@/context/CartContext";
 import ChatButton from "../ChatButton/ChatButton";
+import ProductCardImage from "@/components/ProductCard/ProductCardImage";
 import { useProductRating } from "@/hooks/useProductRating";
 import {
   conditionLabel,
@@ -34,7 +35,6 @@ import {
   parseProductRating,
   productStatusChipColor,
   productStatusLabel,
-  productImageUrl,
 } from "@/lib/product-helpers";
 
 type ProductDetailModalProps = {
@@ -203,17 +203,11 @@ const ProductDetailModal = ({
             </Typography>
           </Box>
 
-          <Box
-            component="img"
-            src={productImageUrl(displayProduct.mainImageUrl)}
+          <ProductCardImage
+            mainImageUrl={displayProduct.mainImageUrl}
             alt={displayProduct.title}
-            sx={{
-              width: "100%",
-              height: 220,
-              objectFit: "cover",
-              borderRadius: "10px",
-              mb: 2,
-            }}
+            height={220}
+            sx={{ borderRadius: "10px", mb: 2 }}
           />
 
           <Box
