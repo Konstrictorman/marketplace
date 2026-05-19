@@ -4,7 +4,8 @@ import axios, { AxiosError, isAxiosError } from "axios";
  * Browser: must use a URL reachable from the client (`NEXT_PUBLIC_API_URL`).
  * Server (RSC, Route Handlers, etc.): prefer `API_BASE_URL` so Docker can use the Compose service name (`http://api:3001`).
  */
-function getExpressApiBaseUrl(): string {
+/** Resolved Express base URL (browser: `NEXT_PUBLIC_API_URL`; server: `API_BASE_URL`). */
+export function getExpressApiBaseUrl(): string {
   if (typeof window !== "undefined") {
     return process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
   }

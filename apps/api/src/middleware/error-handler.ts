@@ -25,13 +25,46 @@ export const notFoundHandler: RequestHandler = (req, _res, next) => {
 
 export const errorHandler: ErrorRequestHandler = (
   err,
-  _req,
+  req,
   res,
   next,
 ): void => {
   if (res.headersSent) {
     next(err);
     return;
+  }
+
+  const isCreateOrder =
+    req.method === "POST" &&
+    (req.originalUrl === "/api/orders" || req.path === "/orders");
+
+  if (isCreateOrder) {
+    const failure: Record<string, unknown> = {
+      method: req.method,
+      path: req.originalUrl,
+      origin: req.headers.origin ?? "(no Origin header)",
+    };
+    if (err instanceof HttpError) {
+      failure.status = err.statusCode;
+      failure.code = err.code;
+      failure.message = err.message;
+      failure.details = err.details;
+    } else if (err instanceof ValidationError) {
+      failure.status = err.statusCode;
+      failure.code = err.code;
+      failure.message = err.message;
+      failure.details = err.details;
+    } else if (err instanceof ZodError) {
+      failure.status = 400;
+      failure.code = "validation_failed";
+      failure.details = err.flatten();
+    } else if (err instanceof Error) {
+      failure.name = err.name;
+      failure.message = err.message;
+    } else {
+      failure.raw = err;
+    }
+    console.error("[createOrder] failed", failure);
   }
 
   const body: ErrorBody = {
