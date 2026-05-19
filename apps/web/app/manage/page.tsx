@@ -22,7 +22,7 @@ export default async function ManagePage({
       sortBy: "createdAt",
       sortOrder: "desc",
     });
-    products = result.data;
+    products = result.data.filter((p) => p.status !== "removed");
   } catch {
     fetchError = "Could not load products.";
   }

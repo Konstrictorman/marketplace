@@ -33,7 +33,7 @@ const ProductCard = ({
   const isManageRoute = pathname === "/manage";
   const [open, setOpen] = useState(false);
   const price = parseProductPrice(product.price);
-  const isRemoved = product.status === "removed";
+  const isInactive = product.status === "inactive";
 
   return (
     <>
@@ -46,14 +46,14 @@ const ProductCard = ({
           boxShadow: "0px 4px 20px rgba(76, 98, 153, 0.2)",
           transition: "transform 0.2s, box-shadow 0.2s, opacity 0.2s",
           cursor: isOwner ? undefined : "pointer",
-          ...(isRemoved && {
+          ...(isInactive && {
             opacity: 0.5,
             "&:hover": {
               transform: "none",
               boxShadow: "0px 4px 20px rgba(76, 98, 153, 0.2)",
             },
           }),
-          ...(!isRemoved && {
+          ...(!isInactive && {
             "&:hover": {
               transform: "translateY(-6px)",
               boxShadow: "0px 8px 30px rgba(76, 98, 153, 0.4)",

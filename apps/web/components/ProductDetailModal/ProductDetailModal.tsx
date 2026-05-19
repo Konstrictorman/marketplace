@@ -79,7 +79,7 @@ const ProductDetailModal = ({
   const statusActionLabel =
     displayProduct.status === "active" ? "Inactivate" : "Activate";
   const nextStatus: ProductStatus =
-    displayProduct.status === "active" ? "removed" : "active";
+    displayProduct.status === "active" ? "inactive" : "active";
 
   const increase = () => {
     if (amount < displayProduct.inventory) setAmount(amount + 1);
