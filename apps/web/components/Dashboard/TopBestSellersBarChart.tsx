@@ -60,7 +60,9 @@ export default function TopBestSellersBarChart({
                 data: quantities,
                 color: "rgb(24, 62, 157)",
                 valueFormatter: (value) =>
-                  value === null ? "" : `${value} unit${value === 1 ? "" : "s"}`,
+                  value === null
+                    ? ""
+                    : `${value} unit${value === 1 ? "" : "s"}`,
               },
             ]}
             height={56 * sellers.length + 48}

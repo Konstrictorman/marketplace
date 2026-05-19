@@ -12,8 +12,9 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
   let slices: Awaited<ReturnType<typeof getSalesByCategory>> = [];
-  let publishedPoints: Awaited<ReturnType<typeof getProductsPublishedLastMonth>> =
-    [];
+  let publishedPoints: Awaited<
+    ReturnType<typeof getProductsPublishedLastMonth>
+  > = [];
   let bestSellers: Awaited<ReturnType<typeof getTopBestSellers>> = [];
   let salesError: string | null = null;
   let publishedError: string | null = null;
