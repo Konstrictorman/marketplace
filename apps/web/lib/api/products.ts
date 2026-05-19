@@ -191,7 +191,7 @@ export async function getProductRating(productId: string) {
   const { data } = await apiClient.get<{ data: ProductRating }>(
     `/api/products/${productId}/rating`,
   );
-  return data;
+  return data.data;
 }
 
 export async function updateProduct(id: string, body: UpdateProductBody) {
