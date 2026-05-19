@@ -3,13 +3,14 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Box,
-  Button,
+  IconButton,
   FormControl,
   InputLabel,
   MenuItem,
   Select,
   TextField,
 } from "@mui/material";
+import FilterAltOffIcon from "@mui/icons-material/FilterAltOff";
 
 type ShopFiltersProps = {
   categories: { id: string; name: string }[];
@@ -68,9 +69,13 @@ export default function ShopFilters({ categories }: ShopFiltersProps) {
         gap: 2,
         alignItems: "center",
         flexWrap: "wrap",
+        justifyContent: "flex-end",
         mb: 3,
         px: 4,
-        pt: 3,
+        pt: 2,
+        pb: 2,
+        backgroundColor: "rgb(212, 212, 212)",
+        borderBottom: "1px solid rgb(220, 226, 240)",
       }}
     >
       <FormControl size="small" sx={{ minWidth: 160 }}>
@@ -139,14 +144,17 @@ export default function ShopFilters({ categories }: ShopFiltersProps) {
       />
 
       {hasFilters && (
-        <Button
-          variant="text"
-          size="small"
+        <IconButton
           onClick={clearFilters}
-          sx={{ textTransform: "none", color: "rgb(131, 148, 189)" }}
+          size="small"
+          title="Limpiar filtros"
+          sx={{
+            color: "rgb(131, 148, 189)",
+            "&:hover": { color: "rgb(24, 62, 157)" },
+          }}
         >
-          Limpiar filtros
-        </Button>
+          <FilterAltOffIcon fontSize="small" />
+        </IconButton>
       )}
     </Box>
   );
