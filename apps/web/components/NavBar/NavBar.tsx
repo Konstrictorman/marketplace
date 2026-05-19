@@ -8,15 +8,24 @@ import NotificationsButton from "../NotificationButton/NotificationButton";
 import SearchBar from "../SearchBar/SearchBar";
 import ChatButton from "../ChatButton/ChatButton";
 import ChatDrawer from "../ChatDrawer/ChatDrawer";
+import { useNotifications } from "@/context/NotificationContext";
 
 export default function NavBar() {
   const router = useRouter();
   const pathname = usePathname();
+  const { notifications, dismiss } = useNotifications();
   const [session, setSession] = useState<AuthSessionData | null>(null);
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatConversationId, setChatConversationId] = useState<string | null>(
+    null,
+  );
   const islogin = pathname === "/login";
   const isshop = pathname === "/shop";
   const isregister = pathname === "/register";
+
+  const unreadMessageCount = notifications.filter(
+    (n) => n.type === "message",
+  ).length;
 
   useEffect(() => {
     let cancelled = false;
@@ -33,10 +42,25 @@ export default function NavBar() {
   }, [pathname]);
 
   useEffect(() => {
-    const handler = () => setChatOpen(true);
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ conversationId?: string }>).detail;
+      setChatConversationId(detail?.conversationId ?? null);
+      setChatOpen(true);
+    };
     window.addEventListener("openChatDrawer", handler);
     return () => window.removeEventListener("openChatDrawer", handler);
   }, []);
+
+  // Dismiss message notifications when chat opens
+  useEffect(() => {
+    if (!chatOpen) return;
+    const run = async () => {
+      notifications
+        .filter((n) => n.type === "message")
+        .forEach((n) => dismiss(n.id));
+    };
+    void run();
+  }, [chatOpen, notifications, dismiss]);
 
   async function handleLogout() {
     try {
@@ -106,7 +130,10 @@ export default function NavBar() {
         {isshop && <ShoppingCart />}
         {!islogin && !isregister && <NotificationsButton />}
         {!islogin && !isregister && (
-          <ChatButton onClick={() => setChatOpen(true)} />
+          <ChatButton
+            onClick={() => setChatOpen(true)}
+            unreadCount={unreadMessageCount}
+          />
         )}
         {session?.authenticated && (
           <Avatar
@@ -148,7 +175,12 @@ export default function NavBar() {
         )}
       </nav>
 
-      <ChatDrawer open={chatOpen} onClose={() => setChatOpen(false)} />
+      <ChatDrawer
+        open={chatOpen}
+        onClose={() => setChatOpen(false)}
+        userId={session?.authenticated ? session.userId : null}
+        initialConversationId={chatConversationId}
+      />
     </>
   );
 }
