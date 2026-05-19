@@ -8,7 +8,10 @@ export const ADMIN_ROLE = "admin";
 export const ROLE_PROTECTED_ROUTES: ReadonlyArray<{
   path: string;
   roles: readonly string[];
-}> = [{ path: "/manage", roles: [ADMIN_ROLE] as const }];
+}> = [
+  { path: "/manage", roles: [ADMIN_ROLE] as const },
+  { path: "/dashboard", roles: [ADMIN_ROLE] as const },
+];
 
 export function hasAdminRole(roles: readonly string[]): boolean {
   return roles.includes(ADMIN_ROLE);
