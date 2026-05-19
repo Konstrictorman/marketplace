@@ -4,6 +4,7 @@ import {
   decodeMpSessionJwtPayload,
   getUserIdFromMpSessionPayload,
 } from "@/lib/mp-session-payload";
+import { getRoleNamesFromSessionToken } from "@/lib/route-access";
 import {
   initialsFromDisplayName,
   initialsFromInstitutionalEmail,
@@ -53,6 +54,7 @@ export async function GET(request: NextRequest) {
         authenticated: true as const,
         userId,
         initials,
+        roles: getRoleNamesFromSessionToken(token),
       },
     },
     { status: 200 },

@@ -111,42 +111,38 @@ export default function NavBar() {
           <ChatButton onClick={() => setChatOpen(true)} />
         )}
         {session?.authenticated && (
-          <Avatar
-            aria-label={
-              session?.authenticated
-                ? `Signed in (${session.initials})`
-                : "Not signed in"
-            }
-            sx={{
-              width: 32,
-              height: 32,
-              fontSize: "0.8125rem",
-              fontWeight: 600,
-              bgcolor: "rgb(189, 197, 217)",
-              color: "rgb(24, 62, 157)",
-            }}
-          >
-            {session?.authenticated ? session.initials : "?"}
-          </Avatar>
-        )}
-        {session?.authenticated && !islogin && !isregister && (
-          <button
-            type="button"
-            onClick={() => void handleLogout()}
-            style={{
-              background: "none",
-              border: "none",
-              padding: 0,
-              cursor: "pointer",
-              color: "rgb(189, 197, 217)",
-              textDecoration: "none",
-              fontWeight: "500",
-              fontSize: "0.9rem",
-              fontFamily: "inherit",
-            }}
-          >
-            Log out
-          </button>
+          <>
+            <Avatar
+              aria-label={`Signed in (${session.initials})`}
+              sx={{
+                width: 32,
+                height: 32,
+                fontSize: "0.8125rem",
+                fontWeight: 600,
+                bgcolor: "rgb(189, 197, 217)",
+                color: "rgb(24, 62, 157)",
+              }}
+            >
+              {session.initials}
+            </Avatar>
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                color: "rgb(189, 197, 217)",
+                textDecoration: "none",
+                fontWeight: "500",
+                fontSize: "0.9rem",
+                fontFamily: "inherit",
+              }}
+            >
+              Log out
+            </button>
+          </>
         )}
       </nav>
 

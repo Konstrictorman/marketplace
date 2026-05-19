@@ -10,7 +10,7 @@ import Box from "@mui/material/Box";
 const HOME_LABEL = "HOME";
 
 /** Pages where breadcrumbs are omitted */
-const HIDDEN_PATHS = new Set(["/", "/login", "/register"]);
+const HIDDEN_PATHS = new Set(["/", "/login", "/register", "/unauthorized"]);
 
 const SEGMENT_LABELS: Record<string, string> = {
   shop: "SHOP",
