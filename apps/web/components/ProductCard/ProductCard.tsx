@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { usePathname } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -28,8 +29,11 @@ const ProductCard = ({
   onEdit,
   onDelete,
 }: ProductCardProps) => {
+  const pathname = usePathname();
+  const isManageRoute = pathname === "/manage";
   const [open, setOpen] = useState(false);
   const price = parseProductPrice(product.price);
+  const isRemoved = product.status === "removed";
 
   return (
     <>
@@ -40,12 +44,21 @@ const ProductCard = ({
           borderRadius: "16px",
           backgroundColor: "rgb(254, 254, 254)",
           boxShadow: "0px 4px 20px rgba(76, 98, 153, 0.2)",
-          transition: "transform 0.2s, box-shadow 0.2s",
+          transition: "transform 0.2s, box-shadow 0.2s, opacity 0.2s",
           cursor: isOwner ? undefined : "pointer",
-          "&:hover": {
-            transform: "translateY(-6px)",
-            boxShadow: "0px 8px 30px rgba(76, 98, 153, 0.4)",
-          },
+          ...(isRemoved && {
+            opacity: 0.5,
+            "&:hover": {
+              transform: "none",
+              boxShadow: "0px 4px 20px rgba(76, 98, 153, 0.2)",
+            },
+          }),
+          ...(!isRemoved && {
+            "&:hover": {
+              transform: "translateY(-6px)",
+              boxShadow: "0px 8px 30px rgba(76, 98, 153, 0.4)",
+            },
+          }),
         }}
       >
         <CardMedia
@@ -137,6 +150,7 @@ const ProductCard = ({
           open={open}
           onClose={() => setOpen(false)}
           product={product}
+          manageMode={isManageRoute}
         />
       )}
     </>

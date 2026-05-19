@@ -2,7 +2,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import HomeIcon from "@mui/icons-material/Home";
-import { Avatar, IconButton, Skeleton } from "@mui/material";
+import { Avatar, Button, IconButton, Skeleton } from "@mui/material";
 import Link from "next/link";
 import ShoppingCart from "../ShoppingCart/ShoppingCart";
 import { getAuthSession, logout, type AuthSessionData } from "@/lib/api/auth";

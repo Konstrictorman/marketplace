@@ -20,7 +20,6 @@ import {
   parseProductPrice,
   productImageUrl,
 } from "@/lib/product-helpers";
-import { createOrder } from "@/lib/api/orders";
 import { getAuthSession } from "@/lib/api/auth";
 import { isApiError } from "@/lib/api/client";
 import { useNotifications } from "@/context/NotificationContext";

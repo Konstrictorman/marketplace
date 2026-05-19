@@ -25,6 +25,10 @@ export type ProductListItem = {
   updatedAt: string;
   /** Resolved gallery image: `isMain` first, else lowest `sortOrder`. */
   mainImageUrl: string | null;
+  /** Seller display name (`users.name`). */
+  sellerUserName: string;
+  /** Seller reputation stored 0–10 as decimal string; UI shows /5. */
+  sellerReputation: string;
 };
 
 export type Product = ProductListItem;
