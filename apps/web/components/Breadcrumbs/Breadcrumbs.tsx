@@ -9,14 +9,15 @@ import Box from "@mui/material/Box";
 
 const HOME_LABEL = "HOME";
 
+/** Pages where breadcrumbs are omitted */
+const HIDDEN_PATHS = new Set(["/", "/login", "/register"]);
+
 const SEGMENT_LABELS: Record<string, string> = {
   shop: "SHOP",
   sell: "SELL",
   orders: "MY ORDERS",
   manage: "MANAGE",
   cart: "CART",
-  login: "LOGIN",
-  register: "REGISTER",
 };
 
 function segmentLabel(segment: string): string {
@@ -68,46 +69,43 @@ const currentSx = {
 
 export default function Breadcrumbs() {
   const pathname = usePathname();
-  const segments = pathname.split("/").filter(Boolean);
+  const normalizedPath =
+    pathname.replace(/\/+$/, "") === "" ? "/" : pathname.replace(/\/+$/, "");
 
-  if (segments.length === 0) {
+  if (HIDDEN_PATHS.has(normalizedPath)) {
     return null;
   }
 
+  const segments = pathname.split("/").filter(Boolean);
+
   const crumbs = [
-    <MuiLink
-      key="home"
-      component={Link}
-      href="/"
-      underline="hover"
-      sx={linkSx}
-    >
+    <MuiLink key="home" component={Link} href="/" underline="hover" sx={linkSx}>
       {HOME_LABEL}
     </MuiLink>,
     ...segments.map((segment, index) => {
-            const href = `/${segments.slice(0, index + 1).join("/")}`;
-            const label = segmentLabel(segment);
-            const isLast = index === segments.length - 1;
+      const href = `/${segments.slice(0, index + 1).join("/")}`;
+      const label = segmentLabel(segment);
+      const isLast = index === segments.length - 1;
 
-            if (isLast) {
-              return (
-                <Typography key={href} component="span" sx={currentSx}>
-                  {label}
-                </Typography>
-              );
-            }
+      if (isLast) {
+        return (
+          <Typography key={href} component="span" sx={currentSx}>
+            {label}
+          </Typography>
+        );
+      }
 
-            return (
-              <MuiLink
-                key={href}
-                component={Link}
-                href={href}
-                underline="hover"
-                sx={linkSx}
-              >
-                {label}
-              </MuiLink>
-            );
+      return (
+        <MuiLink
+          key={href}
+          component={Link}
+          href={href}
+          underline="hover"
+          sx={linkSx}
+        >
+          {label}
+        </MuiLink>
+      );
     }),
   ];
 
