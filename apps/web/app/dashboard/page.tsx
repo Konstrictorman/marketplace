@@ -1,9 +1,11 @@
 import { Alert, Box, Typography } from "@mui/material";
 import CategorySalesPieChart from "@/components/Dashboard/CategorySalesPieChart";
 import ProductsPublishedSparkline from "@/components/Dashboard/ProductsPublishedSparkline";
+import TopBestSellersBarChart from "@/components/Dashboard/TopBestSellersBarChart";
 import {
   getProductsPublishedLastMonth,
   getSalesByCategory,
+  getTopBestSellers,
 } from "@/lib/api/dashboard";
 
 export const dynamic = "force-dynamic";
@@ -12,13 +14,17 @@ export default async function DashboardPage() {
   let slices: Awaited<ReturnType<typeof getSalesByCategory>> = [];
   let publishedPoints: Awaited<ReturnType<typeof getProductsPublishedLastMonth>> =
     [];
+  let bestSellers: Awaited<ReturnType<typeof getTopBestSellers>> = [];
   let salesError: string | null = null;
   let publishedError: string | null = null;
+  let bestSellersError: string | null = null;
 
-  const [salesResult, publishedResult] = await Promise.allSettled([
-    getSalesByCategory(),
-    getProductsPublishedLastMonth(),
-  ]);
+  const [salesResult, publishedResult, bestSellersResult] =
+    await Promise.allSettled([
+      getSalesByCategory(),
+      getProductsPublishedLastMonth(),
+      getTopBestSellers(),
+    ]);
 
   if (salesResult.status === "fulfilled") {
     slices = salesResult.value;
@@ -31,6 +37,14 @@ export default async function DashboardPage() {
   } else {
     publishedError = "Could not load products published.";
   }
+
+  if (bestSellersResult.status === "fulfilled") {
+    bestSellers = bestSellersResult.value;
+  } else {
+    bestSellersError = "Could not load top best sellers.";
+  }
+
+  const hasChartErrors = salesError || publishedError || bestSellersError;
 
   return (
     <Box
@@ -64,7 +78,7 @@ export default async function DashboardPage() {
           Dashboard
         </Typography>
 
-        {(salesError || publishedError) && (
+        {hasChartErrors ? (
           <Box
             sx={{
               mt: 3,
@@ -78,8 +92,11 @@ export default async function DashboardPage() {
             {publishedError ? (
               <Alert severity="error">{publishedError}</Alert>
             ) : null}
+            {bestSellersError ? (
+              <Alert severity="error">{bestSellersError}</Alert>
+            ) : null}
           </Box>
-        )}
+        ) : null}
 
         <Box
           sx={{
@@ -97,6 +114,10 @@ export default async function DashboardPage() {
             <ProductsPublishedSparkline points={publishedPoints} />
           ) : null}
         </Box>
+
+        {!bestSellersError ? (
+          <TopBestSellersBarChart sellers={bestSellers} />
+        ) : null}
       </Box>
     </Box>
   );

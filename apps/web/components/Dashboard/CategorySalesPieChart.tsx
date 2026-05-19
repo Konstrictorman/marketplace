@@ -1,6 +1,7 @@
 "use client";
 
 import { Box, Typography } from "@mui/material";
+import { blueberryTwilightPaletteLight } from "@mui/x-charts/colorPalettes";
 import { PieChart } from "@mui/x-charts/PieChart";
 import type { CategorySalesSlice } from "@/lib/api/dashboard";
 
@@ -46,11 +47,13 @@ export default function CategorySalesPieChart({
           sx={{
             width: "100%",
             display: "flex",
-            justifyContent: "center",
-            overflow: "hidden",
+            flexDirection: "column",
+            alignItems: "center",
           }}
         >
           <PieChart
+            hideLegend
+            colors={blueberryTwilightPaletteLight}
             series={[
               {
                 data: chartData,
@@ -58,16 +61,57 @@ export default function CategorySalesPieChart({
                 valueFormatter: (value) => `${value} units`,
               },
             ]}
-            width={400}
-            height={300}
+            width={280}
+            height={240}
             margin={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            slotProps={{
-              legend: {
-                direction: "horizontal",
-                position: { vertical: "bottom", horizontal: "center" },
-              },
-            }}
           />
+
+          <Box
+            component="ul"
+            sx={{
+              m: 0,
+              mt: 2,
+              p: 0,
+              width: "100%",
+              listStyle: "none",
+              display: "flex",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              gap: 2,
+            }}
+          >
+            {chartData.map((item, index) => (
+              <Box
+                component="li"
+                key={item.id}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                }}
+              >
+                <Box
+                  aria-hidden
+                  sx={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                    backgroundColor:
+                      blueberryTwilightPaletteLight[
+                        index % blueberryTwilightPaletteLight.length
+                      ],
+                  }}
+                />
+                <Typography
+                  variant="body2"
+                  sx={{ color: "rgb(0, 28, 100)", fontWeight: 500 }}
+                >
+                  {item.label}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
         </Box>
       )}
     </Box>

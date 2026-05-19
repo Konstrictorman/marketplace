@@ -26,3 +26,16 @@ export async function getProductsPublishedLastMonth(): Promise<
   );
   return data.data;
 }
+
+export type BestSeller = {
+  productId: string;
+  productTitle: string;
+  quantitySold: number;
+};
+
+export async function getTopBestSellers(): Promise<BestSeller[]> {
+  const { data } = await apiClient.get<{ data: BestSeller[] }>(
+    "/api/dashboard/top-best-sellers",
+  );
+  return data.data;
+}

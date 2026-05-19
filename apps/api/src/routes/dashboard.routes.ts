@@ -3,6 +3,7 @@ import { asyncHandler } from "../lib/async-handler.js";
 import {
   getProductsPublishedLastMonth,
   getSalesByCategory,
+  getTopBestSellers,
 } from "../services/dashboard.service.js";
 
 const router = Router();
@@ -19,6 +20,14 @@ router.get(
   "/dashboard/products-published",
   asyncHandler(async (_req, res) => {
     const data = await getProductsPublishedLastMonth();
+    res.json({ data });
+  }),
+);
+
+router.get(
+  "/dashboard/top-best-sellers",
+  asyncHandler(async (_req, res) => {
+    const data = await getTopBestSellers();
     res.json({ data });
   }),
 );

@@ -101,3 +101,47 @@ export async function getProductsPublishedLastMonth(): Promise<
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, count]) => ({ date, count }));
 }
+
+export type BestSellerDTO = {
+  productId: string;
+  productTitle: string;
+  quantitySold: number;
+};
+
+const TOP_BEST_SELLERS_LIMIT = 5;
+
+/** Top products by units sold on completed orders. */
+export async function getTopBestSellers(
+  limit = TOP_BEST_SELLERS_LIMIT,
+): Promise<BestSellerDTO[]> {
+  const lineItems = await prisma.orderItem.findMany({
+    where: {
+      order: { status: { in: SOLD_ORDER_STATUSES } },
+    },
+    select: {
+      quantity: true,
+      productId: true,
+      product: { select: { title: true } },
+    },
+  });
+
+  const totals = new Map<string, BestSellerDTO>();
+
+  for (const line of lineItems) {
+    const current = totals.get(line.productId) ?? {
+      productId: line.productId,
+      productTitle: line.product.title,
+      quantitySold: 0,
+    };
+    current.quantitySold += line.quantity;
+    totals.set(line.productId, current);
+  }
+
+  return [...totals.values()]
+    .sort(
+      (a, b) =>
+        b.quantitySold - a.quantitySold ||
+        a.productTitle.localeCompare(b.productTitle),
+    )
+    .slice(0, limit);
+}
