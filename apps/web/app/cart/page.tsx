@@ -28,10 +28,7 @@ import { createOrder } from "@/lib/api/orders";
 
 const CHECKOUT_LOG = "[checkout]";
 
-function logCheckout(
-  phase: string,
-  data?: Record<string, unknown>,
-): void {
+function logCheckout(phase: string, data?: Record<string, unknown>): void {
   console.log(CHECKOUT_LOG, phase, data ?? "");
 }
 
@@ -73,7 +70,8 @@ export default function CartPage() {
     logCheckout("start", {
       pageOrigin: window.location.origin,
       apiBaseUrl,
-      nextPublicApiUrl: process.env.NEXT_PUBLIC_API_URL ?? "(unset → localhost:3001)",
+      nextPublicApiUrl:
+        process.env.NEXT_PUBLIC_API_URL ?? "(unset → localhost:3001)",
       selectedItemCount: selectedItems.length,
       total: total.toFixed(2),
       items: orderPayload.items,
@@ -135,10 +133,19 @@ export default function CartPage() {
       } else if (e instanceof Error) {
         diagnostics.name = e.name;
         diagnostics.message = e.message;
-        console.error(CHECKOUT_LOG, "createOrder.failed (Error)", diagnostics, e);
+        console.error(
+          CHECKOUT_LOG,
+          "createOrder.failed (Error)",
+          diagnostics,
+          e,
+        );
       } else {
         diagnostics.raw = e;
-        console.error(CHECKOUT_LOG, "createOrder.failed (unknown)", diagnostics);
+        console.error(
+          CHECKOUT_LOG,
+          "createOrder.failed (unknown)",
+          diagnostics,
+        );
       }
 
       const message = isApiError(e)
